@@ -239,6 +239,30 @@
       border-radius: 20px;
     }
 
+    /* CSS إضافي للترجمة - فقط للنص */
+    video::-webkit-media-text-track-display {
+      font-family: Arial, sans-serif;
+      font-size: 18px;
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    }
+
+    video::cue {
+      font-family: Arial, sans-serif;
+      font-size: 18px;
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.8);
+      padding: 8px 12px;
+      border-radius: 4px;
+      position: relative;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: 90%;
+      text-align: center;
+    }
+
     .status-log {
       background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
       color: #e2e8f0;
@@ -331,6 +355,104 @@
       font-size: 0.9rem;
     }
 
+    .template-selector {
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      border: 2px solid #cbd5e1;
+      border-radius: 15px;
+      padding: 25px;
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    .template-selector h3 {
+      color: #1e293b;
+      margin-bottom: 20px;
+      font-size: 1.3rem;
+      font-weight: 600;
+    }
+
+    .template-options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .template-option {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .template-option:hover {
+      border-color: #3b82f6;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
+    }
+
+    .template-option.selected {
+      border-color: #10b981;
+      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.2);
+    }
+
+    .template-option.selected::before {
+      content: '✓';
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #10b981;
+      color: white;
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .template-preview {
+      width: 100%;
+      height: 60px;
+      background: #000;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .template-preview-text {
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+      padding: 8px 12px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.8);
+    }
+
+    .template-name {
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 5px;
+    }
+
+    .template-description {
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+
     @media (max-width: 768px) {
       .container {
         margin: 10px;
@@ -381,11 +503,22 @@
         <button id="btn" class="process-button" disabled>
           <i class="fas fa-magic"></i> بدء التحويل
         </button>
+        
+        <button id="applyTemplateBtn" class="process-button" style="display: none; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+          <i class="fas fa-paint-brush"></i> تطبيق القالب
+        </button>
       </div>
 
       <div class="file-info" id="fileInfo">
         <div class="file-name" id="fileName"></div>
         <div class="file-size" id="fileSize"></div>
+      </div>
+
+      <div class="template-selector" id="templateSelector" style="display: none;">
+        <h3><i class="fas fa-palette"></i> اختر قالب الترجمة</h3>
+        <div class="template-options" id="templateOptions">
+          <!-- سيتم ملؤها بواسطة JavaScript -->
+        </div>
       </div>
 
       <div class="progress-bar" id="progressBar" style="display: none;">
@@ -414,7 +547,12 @@
     const videoContainer = document.getElementById('videoContainer');
     const progressBar = document.getElementById('progressBar');
     const progressFill = document.getElementById('progressFill');
+    const templateSelector = document.getElementById('templateSelector');
+    const templateOptions = document.getElementById('templateOptions');
+    const applyTemplateBtn = document.getElementById('applyTemplateBtn');
     let currentTrack = null;
+    let selectedTemplate = null;
+    let templates = null;
 
     function formatFileSize(bytes) {
       if (bytes === 0) return '0 بايت';
@@ -451,6 +589,170 @@
       progressFill.style.width = percent + '%';
     }
 
+    // تحميل قوالب الترجمة
+    async function loadTemplates() {
+      try {
+        const response = await fetch('captionTemplates.json');
+        templates = await response.json();
+        renderTemplateOptions();
+      } catch (error) {
+        console.error('خطأ في تحميل القوالب:', error);
+        write('خطأ في تحميل قوالب الترجمة', 'error');
+      }
+    }
+
+    // عرض خيارات القوالب
+    function renderTemplateOptions() {
+      if (!templates) return;
+      
+      templateOptions.innerHTML = '';
+      
+      templates.templates.forEach(template => {
+        const option = document.createElement('div');
+        option.className = 'template-option';
+        option.dataset.templateId = template.id;
+        
+        option.innerHTML = `
+          <div class="template-preview">
+            <div class="template-preview-text" style="
+              font-family: ${template.fontFamily};
+              font-size: ${template.fontSize};
+              font-weight: ${template.fontWeight};
+              color: ${template.textColor};
+              background: ${template.background.enabled ? template.background.color : 'transparent'};
+              padding: ${template.background.paddingY} ${template.background.paddingX};
+              border-radius: ${template.background.borderRadius};
+              text-shadow: ${template.textShadow || 'none'};
+              border: ${template.border || 'none'};
+              box-shadow: ${template.boxShadow || 'none'};
+            ">
+              عينة نص
+            </div>
+          </div>
+          <div class="template-name">${template.name}</div>
+          <div class="template-description">${getTemplateDescription(template.id)}</div>
+        `;
+        
+        option.addEventListener('click', () => selectTemplate(template.id));
+        templateOptions.appendChild(option);
+      });
+    }
+
+    // وصف القوالب
+    function getTemplateDescription(templateId) {
+      const descriptions = {
+        'classic-white': 'كلاسيكي أبيض بسيط',
+        'tiktok-style': 'ملون بأسلوب تيك توك',
+        'karaoke': 'كاريوكي مع تمييز الكلمات',
+        'capsule': 'كبسولة أنيقة'
+      };
+      return descriptions[templateId] || '';
+    }
+
+    // اختيار قالب
+    function selectTemplate(templateId) {
+      // إزالة التحديد من جميع القوالب
+      document.querySelectorAll('.template-option').forEach(option => {
+        option.classList.remove('selected');
+      });
+      
+      // تحديد القالب المختار
+      const selectedOption = document.querySelector(`[data-template-id="${templateId}"]`);
+      if (selectedOption) {
+        selectedOption.classList.add('selected');
+        selectedTemplate = templates.templates.find(t => t.id === templateId);
+        write(`تم اختيار قالب: ${selectedTemplate.name}`, 'success');
+        
+        // تطبيق القالب فوراً إذا كان هناك ترجمة موجودة
+        if (currentTrack) {
+          applyTemplateStyles(selectedTemplate);
+          write(`تم تطبيق قالب ${selectedTemplate.name} على الترجمة الحالية`, 'success');
+        }
+      }
+    }
+
+    // تطبيق تنسيق القالب على الترجمة
+    function applyTemplateStyles(template) {
+      if (!template) return;
+      
+      // إنشاء CSS مخصص للترجمة
+      const styleId = 'caption-template-styles';
+      let existingStyle = document.getElementById(styleId);
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+      
+      const style = document.createElement('style');
+      style.id = styleId;
+      
+      // CSS للترجمة - فقط للنص وليس للفيديو
+      let css = `
+        video::cue {
+          font-family: ${template.fontFamily} !important;
+          font-size: ${template.fontSize} !important;
+          font-weight: ${template.fontWeight} !important;
+          color: ${template.textColor} !important;
+          text-align: ${template.align} !important;
+          text-shadow: ${template.textShadow || 'none'} !important;
+          position: relative !important;
+          bottom: 20px !important;
+          left: 50% !important;
+          transform: translateX(-50%) !important;
+          max-width: 90% !important;
+          display: inline-block !important;
+        }
+      `;
+      
+      if (template.background.enabled) {
+        css += `
+          video::cue {
+            background: ${template.background.color} !important;
+            padding: ${template.background.paddingY} ${template.background.paddingX} !important;
+            border-radius: ${template.background.borderRadius} !important;
+          }
+        `;
+      }
+      
+      if (template.border) {
+        css += `
+          video::cue {
+            border: ${template.border} !important;
+          }
+        `;
+      }
+      
+      if (template.boxShadow) {
+        css += `
+          video::cue {
+            box-shadow: ${template.boxShadow} !important;
+          }
+        `;
+      }
+      
+      // إضافة تأثيرات الحركة
+      if (template.animation && templates.animations[template.animation]) {
+        const anim = templates.animations[template.animation];
+        css += anim.keyframes + `
+          video::cue {
+            animation: ${template.animation} ${anim.duration} ${anim.timingFunction} !important;
+          }
+        `;
+      }
+      
+      style.textContent = css;
+      document.head.appendChild(style);
+      
+      // إعادة تحميل الترجمة لتطبيق التنسيق
+      if (currentTrack) {
+        const track = currentTrack;
+        const src = track.src;
+        track.src = '';
+        setTimeout(() => {
+          track.src = src;
+        }, 100);
+      }
+    }
+
     // Drag and Drop functionality
     uploadSection.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -482,9 +784,12 @@
       fileSize.textContent = formatFileSize(file.size);
       fileInfo.classList.add('show');
 
+      // إظهار أداة اختيار القالب
+      templateSelector.style.display = 'block';
+
       // تفعيل زر التحويل
       btn.disabled = false;
-      write('تم اختيار الملف بنجاح! اضغط على "بدء التحويل" للمتابعة.', 'success');
+      write('تم اختيار الملف بنجاح! اختر قالب الترجمة ثم اضغط على "بدء التحويل".', 'success');
     }
 
     fileInput.addEventListener('change', handleFileSelect);
@@ -493,6 +798,18 @@
     document.querySelector('.file-input-button').addEventListener('click', function(e) {
       e.preventDefault();
       fileInput.click();
+    });
+
+    // زر تطبيق القالب
+    applyTemplateBtn.addEventListener('click', function() {
+      if (selectedTemplate && currentTrack) {
+        applyTemplateStyles(selectedTemplate);
+        write(`تم تطبيق قالب ${selectedTemplate.name} بنجاح!`, 'success');
+      } else if (!selectedTemplate) {
+        write('من فضلك اختر قالب أولاً', 'error');
+      } else {
+        write('لا يوجد ترجمة لتطبيق القالب عليها', 'error');
+      }
     });
 
     btn.addEventListener('click', async () => {
@@ -565,7 +882,16 @@
         player.appendChild(track);
         currentTrack = track;
 
-        write('تم التحويل بنجاح! 🎉 شغّل الفيديو وستظهر الترجمة تلقائياً.', 'success');
+        // إظهار زر تطبيق القالب
+        applyTemplateBtn.style.display = 'inline-block';
+
+        // تطبيق القالب المختار
+        if (selectedTemplate) {
+          applyTemplateStyles(selectedTemplate);
+          write(`تم التحويل بنجاح! 🎉 شغّل الفيديو وستظهر الترجمة بقالب ${selectedTemplate.name}.`, 'success');
+        } else {
+          write('تم التحويل بنجاح! 🎉 شغّل الفيديو وستظهر الترجمة تلقائياً.', 'success');
+        }
         
         // إخفاء شريط التقدم بعد ثانيتين
         setTimeout(() => {
@@ -592,6 +918,11 @@
           this.style.transform = 'translateY(0)';
         }
       });
+    });
+
+    // تحميل القوالب عند بدء تشغيل الصفحة
+    document.addEventListener('DOMContentLoaded', function() {
+      loadTemplates();
     });
   </script>
 </body>

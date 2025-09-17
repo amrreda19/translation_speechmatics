@@ -1,0 +1,115 @@
+{
+  "templates": [
+    {
+      "id": "classic-white",
+      "name": "كلاسيكي أبيض",
+      "fontFamily": "Arial, sans-serif",
+      "fontSize": "18px",
+      "fontWeight": "400",
+      "textColor": "#ffffff",
+      "background": {
+        "enabled": true,
+        "color": "rgba(0, 0, 0, 0.8)",
+        "paddingX": "12px",
+        "paddingY": "8px",
+        "borderRadius": "4px"
+      },
+      "animation": "fadeIn",
+      "align": "center",
+      "position": "bottom",
+      "textShadow": "2px 2px 4px rgba(0, 0, 0, 0.8)"
+    },
+    {
+      "id": "tiktok-style",
+      "name": "أسلوب تيك توك",
+      "fontFamily": "Impact, Arial Black, sans-serif",
+      "fontSize": "24px",
+      "fontWeight": "900",
+      "textColor": "#ffffff",
+      "background": {
+        "enabled": true,
+        "color": "rgba(255, 0, 80, 0.9)",
+        "paddingX": "16px",
+        "paddingY": "12px",
+        "borderRadius": "25px"
+      },
+      "animation": "bounceIn",
+      "align": "center",
+      "position": "bottom",
+      "textShadow": "3px 3px 6px rgba(0, 0, 0, 0.5)",
+      "border": "2px solid #ffffff"
+    },
+    {
+      "id": "karaoke",
+      "name": "كاريوكي",
+      "fontFamily": "Arial, sans-serif",
+      "fontSize": "20px",
+      "fontWeight": "600",
+      "textColor": "#ffff00",
+      "background": {
+        "enabled": true,
+        "color": "rgba(0, 0, 0, 0.9)",
+        "paddingX": "15px",
+        "paddingY": "10px",
+        "borderRadius": "8px"
+      },
+      "animation": "slideUp",
+      "align": "center",
+      "position": "bottom",
+      "textShadow": "2px 2px 4px rgba(0, 0, 0, 0.8)",
+      "highlight": {
+        "enabled": true,
+        "color": "#ff6b6b",
+        "backgroundColor": "rgba(255, 107, 107, 0.3)"
+      },
+      "karaokeEffect": {
+        "enabled": true,
+        "highlightColor": "#00ff00",
+        "duration": 0.5
+      }
+    },
+    {
+      "id": "capsule",
+      "name": "كبسولة أنيقة",
+      "fontFamily": "Segoe UI, Arial, sans-serif",
+      "fontSize": "16px",
+      "fontWeight": "500",
+      "textColor": "#2d3748",
+      "background": {
+        "enabled": true,
+        "color": "rgba(255, 255, 255, 0.95)",
+        "paddingX": "20px",
+        "paddingY": "12px",
+        "borderRadius": "30px"
+      },
+      "animation": "scaleIn",
+      "align": "center",
+      "position": "bottom",
+      "textShadow": "1px 1px 2px rgba(0, 0, 0, 0.1)",
+      "border": "1px solid rgba(59, 130, 246, 0.3)",
+      "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.15)"
+    }
+  ],
+  "animations": {
+    "fadeIn": {
+      "keyframes": "@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }",
+      "duration": "0.5s",
+      "timingFunction": "ease-in"
+    },
+    "bounceIn": {
+      "keyframes": "@keyframes bounceIn { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.05); } 70% { transform: scale(0.9); } 100% { transform: scale(1); opacity: 1; } }",
+      "duration": "0.6s",
+      "timingFunction": "cubic-bezier(0.68, -0.55, 0.265, 1.55)"
+    },
+    "slideUp": {
+      "keyframes": "@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }",
+      "duration": "0.4s",
+      "timingFunction": "ease-out"
+    },
+    "scaleIn": {
+      "keyframes": "@keyframes scaleIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }",
+      "duration": "0.3s",
+      "timingFunction": "ease-out"
+    }
+  }
+}
