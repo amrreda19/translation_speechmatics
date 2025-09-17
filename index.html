@@ -3,30 +3,403 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Caption Demo (Simple)</title>
+  <title>🎬 مولد الترجمة التلقائية</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 24px; background:#fafafa; }
-    .card { background:#fff; padding:16px; border:1px solid #eee; border-radius:12px; max-width:720px; margin:auto; }
-    .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-    button { padding:10px 16px; border-radius:8px; border:1px solid #ddd; background:#f5f5f5; cursor:pointer; }
-    button:disabled { opacity:.6; cursor:not-allowed; }
-    video { width:100%; max-height:60vh; background:#000; border-radius:12px; margin-top:12px; }
-    .log { font-size:14px; color:#444; white-space:pre-wrap; margin-top:8px; }
-    .hint { font-size:12px; color:#666; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body { 
+      font-family: 'Cairo', system-ui, -apple-system, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      direction: rtl;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      animation: slideUp 0.6s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(-20px, -20px) rotate(180deg); }
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+      position: relative;
+      z-index: 1;
+    }
+
+    .content {
+      padding: 40px;
+    }
+
+    .upload-section {
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      border: 3px dashed #cbd5e1;
+      border-radius: 20px;
+      padding: 40px;
+      text-align: center;
+      margin-bottom: 30px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upload-section:hover {
+      border-color: #3b82f6;
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(59, 130, 246, 0.15);
+    }
+
+    .upload-section.dragover {
+      border-color: #10b981;
+      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+      transform: scale(1.02);
+    }
+
+    .upload-icon {
+      font-size: 4rem;
+      color: #3b82f6;
+      margin-bottom: 20px;
+      animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-10px); }
+      60% { transform: translateY(-5px); }
+    }
+
+    .upload-text {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 15px;
+    }
+
+    .upload-hint {
+      color: #64748b;
+      font-size: 1rem;
+      margin-bottom: 25px;
+    }
+
+    .file-input-wrapper {
+      position: relative;
+      display: inline-block;
+      margin-bottom: 20px;
+    }
+
+    .file-input {
+      position: absolute;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      z-index: 10;
+    }
+
+    .file-input-button {
+      background: linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%);
+      color: white;
+      padding: 15px 30px;
+      border: none;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .file-input-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+    }
+
+    .file-input-button:active {
+      transform: translateY(0);
+    }
+
+    .file-input-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .file-input-button:hover::before {
+      left: 100%;
+    }
+
+    .process-button {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      padding: 15px 30px;
+      border: none;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+      margin-left: 15px;
+    }
+
+    .process-button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+    }
+
+    .process-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .video-container {
+      background: #000;
+      border-radius: 20px;
+      overflow: hidden;
+      margin: 30px 0;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+
+    .video-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(45deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    video {
+      width: 100%;
+      max-height: 60vh;
+      display: block;
+      border-radius: 20px;
+    }
+
+    .status-log {
+      background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+      color: #e2e8f0;
+      padding: 20px;
+      border-radius: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+      margin-top: 20px;
+      border-left: 4px solid #3b82f6;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+    }
+
+    .loading {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #3b82f6;
+      border-top: 2px solid transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .success-message {
+      color: #10b981;
+      font-weight: 600;
+    }
+
+    .error-message {
+      color: #ef4444;
+      font-weight: 600;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 15px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #10b981);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .file-info {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 10px;
+      padding: 15px;
+      margin: 15px 0;
+      display: none;
+    }
+
+    .file-info.show {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .file-name {
+      font-weight: 600;
+      color: #1e3a8a;
+      margin-bottom: 5px;
+    }
+
+    .file-size {
+      color: #64748b;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        margin: 10px;
+        border-radius: 20px;
+      }
+      
+      .content {
+        padding: 20px;
+      }
+      
+      .header h1 {
+        font-size: 2rem;
+      }
+      
+      .upload-section {
+        padding: 30px 20px;
+      }
+      
+      .file-input-button, .process-button {
+        padding: 12px 24px;
+        font-size: 1rem;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>🎬 تجربة بسيطة جدًا: رفع فيديو + كابتشن VTT</h1>
-    <div class="row">
-      <input id="file" type="file" accept="video/*" />
-      <button id="btn">رفع وتحويل</button>
-      <span class="hint">أرفع فيديو قصير للاختبار.</span>
+  <div class="container">
+    <div class="header">
+      <h1><i class="fas fa-video"></i> مولد الترجمة التلقائية</h1>
+      <p>حول أي فيديو إلى ترجمة تلقائية بسهولة وسرعة</p>
     </div>
 
-    <video id="player" controls></video>
+    <div class="content">
+      <div class="upload-section" id="uploadSection">
+        <div class="upload-icon">
+          <i class="fas fa-cloud-upload-alt"></i>
+        </div>
+        <div class="upload-text">اسحب وأفلت فيديو هنا أو اختر ملف</div>
+        <div class="upload-hint">يدعم جميع صيغ الفيديو (MP4, AVI, MOV, WMV)</div>
+        
+        <div class="file-input-wrapper">
+          <input id="file" type="file" accept="video/*" class="file-input" />
+          <button class="file-input-button">
+            <i class="fas fa-folder-open"></i> اختر ملف فيديو
+          </button>
+        </div>
+        
+        <button id="btn" class="process-button" disabled>
+          <i class="fas fa-magic"></i> بدء التحويل
+        </button>
+      </div>
 
-    <div class="log" id="log"></div>
+      <div class="file-info" id="fileInfo">
+        <div class="file-name" id="fileName"></div>
+        <div class="file-size" id="fileSize"></div>
+      </div>
+
+      <div class="progress-bar" id="progressBar" style="display: none;">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+
+      <div class="video-container" id="videoContainer" style="display: none;">
+    <video id="player" controls></video>
+      </div>
+
+      <div class="status-log" id="log">
+        <i class="fas fa-info-circle"></i> اختر ملف فيديو لبدء التحويل
+      </div>
+    </div>
   </div>
 
   <script>
@@ -34,17 +407,105 @@
     const btn = document.getElementById('btn');
     const log = document.getElementById('log');
     const player = document.getElementById('player');
+    const uploadSection = document.getElementById('uploadSection');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const videoContainer = document.getElementById('videoContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
     let currentTrack = null;
 
-    function write(msg){ log.textContent = msg; }
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 بايت';
+      const k = 1024;
+      const sizes = ['بايت', 'كيلوبايت', 'ميجابايت', 'جيجابايت'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function write(msg, type = 'info') {
+      const icon = type === 'success' ? 'fas fa-check-circle' : 
+                   type === 'error' ? 'fas fa-exclamation-circle' : 
+                   type === 'loading' ? 'fas fa-spinner fa-spin' : 'fas fa-info-circle';
+      
+      log.innerHTML = `<i class="${icon}"></i> ${msg}`;
+      
+      if (type === 'success') {
+        log.classList.add('success-message');
+      } else if (type === 'error') {
+        log.classList.add('error-message');
+      } else {
+        log.classList.remove('success-message', 'error-message');
+      }
+    }
+
+    function showProgress(show) {
+      progressBar.style.display = show ? 'block' : 'none';
+      if (show) {
+        progressFill.style.width = '0%';
+      }
+    }
+
+    function updateProgress(percent) {
+      progressFill.style.width = percent + '%';
+    }
+
+    // Drag and Drop functionality
+    uploadSection.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadSection.classList.add('dragover');
+    });
+
+    uploadSection.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      uploadSection.classList.remove('dragover');
+    });
+
+    uploadSection.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadSection.classList.remove('dragover');
+      
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        fileInput.files = files;
+        handleFileSelect();
+      }
+    });
+
+    function handleFileSelect() {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+
+      // عرض معلومات الملف
+      fileName.textContent = file.name;
+      fileSize.textContent = formatFileSize(file.size);
+      fileInfo.classList.add('show');
+
+      // تفعيل زر التحويل
+      btn.disabled = false;
+      write('تم اختيار الملف بنجاح! اضغط على "بدء التحويل" للمتابعة.', 'success');
+    }
+
+    fileInput.addEventListener('change', handleFileSelect);
+
+    // إضافة event listener للزر أيضاً
+    document.querySelector('.file-input-button').addEventListener('click', function(e) {
+      e.preventDefault();
+      fileInput.click();
+    });
 
     btn.addEventListener('click', async () => {
       const file = fileInput.files?.[0];
-      if (!file) { write('من فضلك اختر ملف فيديو.'); return; }
+      if (!file) { 
+        write('من فضلك اختر ملف فيديو أولاً.', 'error'); 
+        return; 
+      }
 
       // عرض الفيديو محليًا فورًا
       const localUrl = URL.createObjectURL(file);
       player.src = localUrl;
+      videoContainer.style.display = 'block';
 
       // إزالة track قديم
       if (currentTrack) {
@@ -53,7 +514,16 @@
       }
 
       btn.disabled = true;
-      write('جاري الرفع والمعالجة...');
+      showProgress(true);
+      write('جاري الرفع والمعالجة...', 'loading');
+
+      // محاكاة شريط التقدم
+      let progress = 0;
+      const progressInterval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress > 90) progress = 90;
+        updateProgress(progress);
+      }, 500);
 
       try {
         const fd = new FormData();
@@ -62,17 +532,22 @@
         const resp = await fetch('/api/transcribe', { method: 'POST', body: fd });
         const data = await resp.json();
 
+        clearInterval(progressInterval);
+        updateProgress(100);
+
         if (!resp.ok) {
-          write(`حدث خطأ: ${data.error || 'unknown'}\n${data.details ? JSON.stringify(data.details, null, 2) : ''}`);
+          write(`حدث خطأ: ${data.error || 'unknown'}\n${data.details ? JSON.stringify(data.details, null, 2) : ''}`, 'error');
           btn.disabled = false;
+          showProgress(false);
           return;
         }
 
         // استلام نص VTT من الخادم
         const vttText = data.vtt || '';
         if (!vttText.trim()) {
-          write('لم يتم استلام VTT.');
+          write('لم يتم استلام ملف الترجمة.', 'error');
           btn.disabled = false;
+          showProgress(false);
           return;
         }
 
@@ -82,7 +557,7 @@
 
         const track = document.createElement('track');
         track.kind = 'subtitles';
-        track.label = 'Arabic';
+        track.label = 'العربية';
         track.srclang = 'ar';
         track.default = true;
         track.src = vttUrl;
@@ -90,12 +565,33 @@
         player.appendChild(track);
         currentTrack = track;
 
-        write('تم! شغّل الفيديو وستظهر الترجمة (قد تحتاج تفعيلها من إعدادات المشغل).');
+        write('تم التحويل بنجاح! 🎉 شغّل الفيديو وستظهر الترجمة تلقائياً.', 'success');
+        
+        // إخفاء شريط التقدم بعد ثانيتين
+        setTimeout(() => {
+          showProgress(false);
+        }, 2000);
+
       } catch (e) {
-        write('فشل الطلب: ' + e.message);
+        clearInterval(progressInterval);
+        write('فشل في الاتصال بالخادم: ' + e.message, 'error');
+        showProgress(false);
       } finally {
         btn.disabled = false;
       }
+    });
+
+    // إضافة تأثيرات تفاعلية للأزرار
+    document.querySelectorAll('button').forEach(button => {
+      button.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-2px)';
+      });
+      
+      button.addEventListener('mouseleave', function() {
+        if (!this.disabled) {
+          this.style.transform = 'translateY(0)';
+        }
+      });
     });
   </script>
 </body>
