@@ -3,926 +3,573 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>🎬 مولد الترجمة التلقائية</title>
+  <title>🎬 مولد الترجمة التلقائية – نمط كانفا</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    :root{
+      --topbar-h: 64px;
+      --sidebar-w: 340px;   /* عرض شريط القوالب (يمين) */
+      --tools-w: 64px;      /* عرض شريط الأدوات (يسار) */
+      --bg-1:#0b1220; --bg-2:#0e1526; --panel:#0f172a; --muted:#94a3b8; --primary:#60a5fa; --accent:#22c55e;
+      --border:#1f2a44;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{
+      font-family:'Cairo', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(1200px 600px at 50% -10%, #1e293b 0%, #0b1220 45%, #090f1a 100%);
+      color:#e5e7eb;
+      overflow:hidden;  /* نمط تطبيق */
     }
 
-    body { 
-      font-family: 'Cairo', system-ui, -apple-system, sans-serif; 
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      padding: 20px;
-      direction: rtl;
+    /* تخطيط رئيسي: شريط علوي + شبكة أسفل */
+    .app{
+      display:grid;
+      grid-template-rows: var(--topbar-h) 1fr;
+      height:100vh;
+      width:100vw;
     }
 
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(10px);
-      border-radius: 24px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
-      animation: slideUp 0.6s ease-out;
+    /* الشريط العلوي */
+    .topbar{
+      display:flex; align-items:center; gap:12px;
+      padding:0 12px;
+      backdrop-filter:saturate(1.2) blur(10px);
+      background: linear-gradient(180deg, rgba(15,23,42,0.85), rgba(15,23,42,0.55));
+      border-bottom:1px solid var(--border);
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px;
+    }
+    .brand i{color:#f59e0b}
+    .brand span{font-weight:700; letter-spacing:.3px}
+    .top-actions{
+      margin-inline-start:auto;
+      display:flex; align-items:center; gap:8px;
+    }
+    .btn{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:10px 14px; border-radius:10px; font-weight:600; border:1px solid var(--border);
+      background:#111827; color:#e5e7eb; cursor:pointer;
+      transition:.18s ease;
+    }
+    .btn:hover{transform:translateY(-1px); border-color:#2b3a63}
+    .btn.primary{background:linear-gradient(135deg,#3b82f6,#1e40af); border-color:transparent}
+    .btn.success{background:linear-gradient(135deg,#10b981,#059669); border-color:transparent}
+    .btn[disabled]{opacity:.6; cursor:not-allowed; transform:none}
+
+    /* شبكة منطقة العمل: أدوات يسار + لوحة عمل وسط + قوالب يمين */
+    .workspace{
+      display:grid;
+      grid-template-columns: var(--tools-w) 1fr var(--sidebar-w);
+      grid-template-areas: "tools canvas sidebar";
+      height:100%;
+      gap:0;
     }
 
-    @keyframes slideUp {
-      from { transform: translateY(30px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
+    /* شريط الأدوات (يسار) */
+    .tools{
+      grid-area:tools;
+      border-inline-end:1px solid var(--border);
+      background:linear-gradient(180deg,#0b1120,#0a0f1a);
+      display:flex; flex-direction:column; align-items:center; padding:8px; gap:6px;
+    }
+    .tool{
+      width:48px; height:48px; display:flex; align-items:center; justify-content:center;
+      border-radius:12px; background:#0f172a; border:1px solid var(--border); color:#cbd5e1;
+      cursor:pointer; transition:.18s ease; position:relative;
+    }
+    .tool:hover{transform:translateY(-2px); color:white; border-color:#334155}
+    .tool input[type=file]{position:absolute; inset:0; opacity:0; cursor:pointer}
+
+    /* لوحة العمل (وسط) */
+    .canvas{
+      grid-area:canvas;
+      display:grid; place-items:center;
+      background:
+        radial-gradient(800px 300px at 50% -10%, rgba(59,130,246,.12), transparent 60%),
+        radial-gradient(600px 300px at 50% 110%, rgba(34,197,94,.10), transparent 60%);
+      position:relative;
+      overflow:hidden;
+    }
+    /* حدود وهمية حول مساحة العمل + شبكة خفيفة */
+    .stage-wrap{
+      width:min(92vw, 1600px);
+      height:min(78vh, 900px);
+      border:1px solid var(--border);
+      border-radius:16px;
+      background:#020617;
+      box-shadow: 0 20px 60px rgba(0,0,0,.45), inset 0 0 0 1px rgba(99,102,241,.06);
+      position:relative;
+      overflow:hidden;
+    }
+    .checker{
+      position:absolute; inset:0;
+      background-image:
+        linear-gradient(#0b1324 1px, transparent 1px),
+        linear-gradient(90deg, #0b1324 1px, transparent 1px);
+      background-size: 24px 24px, 24px 24px;
+      opacity:.35; pointer-events:none;
+    }
+    /* مركز الفيديو داخل مساحة العمل */
+    .stage{
+      position:absolute; inset:24px 24px 72px 24px;  /* يترك مساحة لشريط الحالة أسفل */
+      display:flex; 
+      align-items:flex-start; 
+      justify-content:center;
+      padding-top: 60px; /* مساحة من الأعلى */
+      overflow:hidden; border-radius:12px;
+      background:#000;
+    }
+    video{
+      max-width:60%; 
+      max-height:60%; 
+      display:block;
+      border:2px solid #334155;
+      border-radius:8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
 
-    .header {
-      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-      color: white;
-      padding: 30px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
+    /* شريط الحالة أسفل اللوحة */
+    .statusbar{
+      position:absolute; left:0; right:0; bottom:0;
+      display:flex; align-items:center; gap:12px;
+      padding:10px 16px; border-top:1px solid var(--border);
+      background:linear-gradient(180deg,#0b1220,#0a0f1a);
+      min-height:56px;
+      font-size:.95rem;
+      color:#cbd5e1;
+    }
+    .progress{flex:1; height:8px; background:#0b1324; border-radius:8px; overflow:hidden; border:1px solid var(--border)}
+    .fill{height:100%; width:0%; background:linear-gradient(90deg,#3b82f6,#10b981)}
+
+    /* شريط القوالب (يمين) */
+    .sidebar{
+      grid-area:sidebar;
+      border-inline-start:1px solid var(--border);
+      background:linear-gradient(180deg,#0a0f1a,#0b1120);
+      display:flex; flex-direction:column; height:100%;
+    }
+    .side-head{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:12px 12px; border-bottom:1px solid var(--border);
+    }
+    .search{
+      display:flex; align-items:center; gap:8px;
+      background:#0f172a; border:1px solid var(--border); border-radius:10px; padding:8px 10px; flex:1;
+    }
+    .search input{
+      background:transparent; border:0; outline:0; color:#e5e7eb; width:100%; font-size:.95rem;
+    }
+    .templates{
+      overflow:auto; padding:12px; display:grid; grid-template-columns:1fr; gap:10px;
+    }
+    .card{
+      background:#0b1324; border:1px solid var(--border); border-radius:12px; padding:12px;
+      display:grid; gap:10px; cursor:pointer; transition:.18s ease;
+    }
+    .card:hover{transform:translateY(-1px); border-color:#2b3a63}
+    .preview{
+      height:64px; border-radius:8px; display:grid; place-items:center; background:#000; overflow:hidden;
+    }
+    .pill{padding:6px 10px; border-radius:6px; font-weight:700; font-size:13px}
+    .selected{outline:2px solid var(--accent)}
+
+    /* لوج نصي جانبي في الأسفل عند الحاجة (منسوخ من نسختك ولكن مدمج) */
+    .log{
+      margin-top:auto; padding:12px; font-family:'Courier New', monospace; font-size:13px;
+      color:#cbd5e1; border-top:1px solid var(--border); background:rgba(15,23,42,.6);
+      white-space:pre-wrap; max-height:26vh; overflow:auto;
     }
 
-    .header::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      right: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-      animation: float 6s ease-in-out infinite;
+    /* استجابة مصغرة */
+    @media (max-width: 1024px){
+      :root{ --sidebar-w: 300px; }
+      .stage-wrap{ height:min(72vh, 820px) }
+      .tools{display:none} /* نخفي الأدوات على الشاشات الصغيرة */
+      .workspace{ grid-template-columns: 1fr var(--sidebar-w) }
+      .workspace{ grid-template-areas: "canvas sidebar" }
+    }
+    @media (max-width: 720px){
+      :root{ --sidebar-w: 280px; }
+      .topbar{gap:8px}
+      .btn span{display:none} /* نظف النص واحتفظ بالأيقونات فقط */
     }
 
-    @keyframes float {
-      0%, 100% { transform: translate(0, 0) rotate(0deg); }
-      50% { transform: translate(-20px, -20px) rotate(180deg); }
-    }
-
-    .header h1 {
-      font-size: 2.5rem;
-      font-weight: 700;
-      margin-bottom: 10px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .header p {
-      font-size: 1.1rem;
-      opacity: 0.9;
-      position: relative;
-      z-index: 1;
-    }
-
-    .content {
-      padding: 40px;
-    }
-
-    .upload-section {
-      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-      border: 3px dashed #cbd5e1;
-      border-radius: 20px;
-      padding: 40px;
-      text-align: center;
-      margin-bottom: 30px;
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .upload-section:hover {
-      border-color: #3b82f6;
-      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-      transform: translateY(-2px);
-      box-shadow: 0 10px 25px rgba(59, 130, 246, 0.15);
-    }
-
-    .upload-section.dragover {
-      border-color: #10b981;
-      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-      transform: scale(1.02);
-    }
-
-    .upload-icon {
-      font-size: 4rem;
-      color: #3b82f6;
-      margin-bottom: 20px;
-      animation: bounce 2s infinite;
-    }
-
-    @keyframes bounce {
-      0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-      40% { transform: translateY(-10px); }
-      60% { transform: translateY(-5px); }
-    }
-
-    .upload-text {
-      font-size: 1.3rem;
-      font-weight: 600;
-      color: #1e293b;
-      margin-bottom: 15px;
-    }
-
-    .upload-hint {
-      color: #64748b;
-      font-size: 1rem;
-      margin-bottom: 25px;
-    }
-
-    .file-input-wrapper {
-      position: relative;
-      display: inline-block;
-      margin-bottom: 20px;
-    }
-
-    .file-input {
-      position: absolute;
-      opacity: 0;
-      width: 100%;
-      height: 100%;
-      cursor: pointer;
-      z-index: 10;
-    }
-
-    .file-input-button {
-      background: linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%);
-      color: white;
-      padding: 15px 30px;
-      border: none;
-      border-radius: 50px;
-      font-size: 1.1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .file-input-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
-    }
-
-    .file-input-button:active {
-      transform: translateY(0);
-    }
-
-    .file-input-button::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-      transition: left 0.5s;
-    }
-
-    .file-input-button:hover::before {
-      left: 100%;
-    }
-
-    .process-button {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      color: white;
-      padding: 15px 30px;
-      border: none;
-      border-radius: 50px;
-      font-size: 1.1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-      margin-left: 15px;
-    }
-
-    .process-button:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
-    }
-
-    .process-button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .video-container {
-      background: #000;
-      border-radius: 20px;
-      overflow: hidden;
-      margin: 30px 0;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-      position: relative;
-    }
-
-    .video-container::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(45deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
-      z-index: 1;
-      pointer-events: none;
-    }
-
-    video {
-      width: 100%;
-      max-height: 60vh;
-      display: block;
-      border-radius: 20px;
-    }
-
-    /* CSS إضافي للترجمة - فقط للنص */
-    video::-webkit-media-text-track-display {
+    /* تنسيق ::cue الافتراضي – سيتم استبداله بالقالب */
+    video::-webkit-media-text-track-display{font-family:Arial, sans-serif; font-size:18px; color:#fff}
+    video::cue{
       font-family: Arial, sans-serif;
-      font-size: 18px;
-      color: white;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-    }
-
-    video::cue {
-      font-family: Arial, sans-serif;
-      font-size: 18px;
-      color: white;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-      background: rgba(0, 0, 0, 0.8);
-      padding: 8px 12px;
-      border-radius: 4px;
-      position: relative;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      max-width: 90%;
-      text-align: center;
-    }
-
-    .status-log {
-      background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-      color: #e2e8f0;
-      padding: 20px;
-      border-radius: 15px;
-      font-family: 'Courier New', monospace;
-      font-size: 14px;
-      white-space: pre-wrap;
-      margin-top: 20px;
-      border-left: 4px solid #3b82f6;
-      min-height: 60px;
-      display: flex;
-      align-items: center;
-    }
-
-    .loading {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .spinner {
-      width: 20px;
-      height: 20px;
-      border: 2px solid #3b82f6;
-      border-top: 2px solid transparent;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .success-message {
-      color: #10b981;
-      font-weight: 600;
-    }
-
-    .error-message {
-      color: #ef4444;
-      font-weight: 600;
-    }
-
-    .progress-bar {
-      width: 100%;
-      height: 6px;
-      background: #e2e8f0;
-      border-radius: 3px;
-      overflow: hidden;
-      margin: 15px 0;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #3b82f6, #10b981);
-      border-radius: 3px;
-      transition: width 0.3s ease;
-      width: 0%;
-    }
-
-    .file-info {
-      background: rgba(59, 130, 246, 0.1);
-      border: 1px solid rgba(59, 130, 246, 0.2);
-      border-radius: 10px;
-      padding: 15px;
-      margin: 15px 0;
-      display: none;
-    }
-
-    .file-info.show {
-      display: block;
-      animation: fadeIn 0.3s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .file-name {
-      font-weight: 600;
-      color: #1e3a8a;
-      margin-bottom: 5px;
-    }
-
-    .file-size {
-      color: #64748b;
-      font-size: 0.9rem;
-    }
-
-    .template-selector {
-      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-      border: 2px solid #cbd5e1;
-      border-radius: 15px;
-      padding: 25px;
-      margin: 20px 0;
-      text-align: center;
-    }
-
-    .template-selector h3 {
-      color: #1e293b;
-      margin-bottom: 20px;
-      font-size: 1.3rem;
-      font-weight: 600;
-    }
-
-    .template-options {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 15px;
-      margin-top: 20px;
-    }
-
-    .template-option {
-      background: white;
-      border: 2px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 20px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .template-option:hover {
-      border-color: #3b82f6;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
-    }
-
-    .template-option.selected {
-      border-color: #10b981;
-      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.2);
-    }
-
-    .template-option.selected::before {
-      content: '✓';
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: #10b981;
-      color: white;
-      width: 25px;
-      height: 25px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      font-size: 14px;
-    }
-
-    .template-preview {
-      width: 100%;
-      height: 60px;
-      background: #000;
-      border-radius: 8px;
-      margin-bottom: 15px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .template-preview-text {
-      color: white;
-      font-size: 14px;
-      font-weight: 600;
-      text-align: center;
-      padding: 8px 12px;
-      border-radius: 4px;
-      background: rgba(0, 0, 0, 0.8);
-    }
-
-    .template-name {
-      font-weight: 600;
-      color: #1e293b;
-      margin-bottom: 5px;
-    }
-
-    .template-description {
-      font-size: 0.85rem;
-      color: #64748b;
-    }
-
-    @media (max-width: 768px) {
-      .container {
-        margin: 10px;
-        border-radius: 20px;
-      }
-      
-      .content {
-        padding: 20px;
-      }
-      
-      .header h1 {
-        font-size: 2rem;
-      }
-      
-      .upload-section {
-        padding: 30px 20px;
-      }
-      
-      .file-input-button, .process-button {
-        padding: 12px 24px;
-        font-size: 1rem;
-      }
+      font-size: 18px; color:#fff; text-shadow: 2px 2px 4px rgba(0,0,0,.8);
+      background: rgba(0,0,0,.75); padding:8px 12px; border-radius:6px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1><i class="fas fa-video"></i> مولد الترجمة التلقائية</h1>
-      <p>حول أي فيديو إلى ترجمة تلقائية بسهولة وسرعة</p>
-    </div>
+  <div class="app">
+    <!-- الشريط العلوي -->
+    <header class="topbar">
+      <div class="brand" title="مولد الترجمة">
+        <i class="fa-solid fa-clapperboard"></i>
+        <span>مولد الترجمة – نمط كانفا</span>
+      </div>
 
-    <div class="content">
-      <div class="upload-section" id="uploadSection">
-        <div class="upload-icon">
-          <i class="fas fa-cloud-upload-alt"></i>
+      <div class="top-actions">
+        <button id="newProject" class="btn" title="مشروع جديد"><i class="fa-regular fa-file"></i><span>جديد</span></button>
+        <label class="btn" title="اختر فيديو">
+          <i class="fa-solid fa-upload"></i><span>رفع فيديو</span>
+          <input id="file" type="file" accept="video/*" hidden />
+        </label>
+        <button id="applyTemplateBtn" class="btn" title="تطبيق القالب" disabled><i class="fa-solid fa-paintbrush"></i><span>تطبيق القالب</span></button>
+        <button id="exportBtn" class="btn primary" title="تصدير"><i class="fa-solid fa-download"></i><span>تصدير</span></button>
+      </div>
+    </header>
+
+    <!-- منطقة العمل -->
+    <main class="workspace">
+      <!-- أدوات يسار (سريعة) -->
+      <aside class="tools">
+        <label class="tool" title="رفع فيديو">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <input id="file2" type="file" accept="video/*" />
+        </label>
+        <button class="tool" id="playPause" title="تشغيل/إيقاف"><i class="fa-solid fa-play"></i></button>
+        <button class="tool" id="fit" title="ملاءمة للشاشة"><i class="fa-solid fa-expand"></i></button>
+        <button class="tool" id="mute" title="كتم"><i class="fa-solid fa-volume-xmark"></i></button>
+      </aside>
+
+      <!-- اللوحة الوسطى (الفيديو) -->
+      <section class="canvas">
+        <div class="stage-wrap">
+          <div class="checker"></div>
+
+          <div class="stage" id="stage">
+            <video id="player" controls crossorigin="anonymous"></video>
+          </div>
+
+          <div class="statusbar">
+            <div id="statusTxt"><i class="fa-regular fa-circle-info"></i> اختر فيديو وابدأ التحويل…</div>
+            <div class="progress" id="progressBar" style="display:none">
+              <div class="fill" id="progressFill"></div>
+            </div>
+          </div>
         </div>
-        <div class="upload-text">اسحب وأفلت فيديو هنا أو اختر ملف</div>
-        <div class="upload-hint">يدعم جميع صيغ الفيديو (MP4, AVI, MOV, WMV)</div>
-        
-        <div class="file-input-wrapper">
-          <input id="file" type="file" accept="video/*" class="file-input" />
-          <button class="file-input-button">
-            <i class="fas fa-folder-open"></i> اختر ملف فيديو
-          </button>
+      </section>
+
+      <!-- القوالب (يمين) -->
+      <aside class="sidebar">
+        <div class="side-head">
+          <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" placeholder="ابحث في القوالب…"></div>
+          <button id="refreshTpl" class="btn" title="إعادة تحميل القوالب"><i class="fa-solid fa-rotate-right"></i></button>
         </div>
-        
-        <button id="btn" class="process-button" disabled>
-          <i class="fas fa-magic"></i> بدء التحويل
-        </button>
-        
-        <button id="applyTemplateBtn" class="process-button" style="display: none; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
-          <i class="fas fa-paint-brush"></i> تطبيق القالب
-        </button>
-      </div>
 
-      <div class="file-info" id="fileInfo">
-        <div class="file-name" id="fileName"></div>
-        <div class="file-size" id="fileSize"></div>
-      </div>
-
-      <div class="template-selector" id="templateSelector" style="display: none;">
-        <h3><i class="fas fa-palette"></i> اختر قالب الترجمة</h3>
-        <div class="template-options" id="templateOptions">
-          <!-- سيتم ملؤها بواسطة JavaScript -->
+        <div class="templates" id="templateOptions">
+          <!-- يتم البناء برمجياً -->
         </div>
-      </div>
 
-      <div class="progress-bar" id="progressBar" style="display: none;">
-        <div class="progress-fill" id="progressFill"></div>
-      </div>
-
-      <div class="video-container" id="videoContainer" style="display: none;">
-    <video id="player" controls></video>
-      </div>
-
-      <div class="status-log" id="log">
-        <i class="fas fa-info-circle"></i> اختر ملف فيديو لبدء التحويل
-      </div>
-    </div>
+        <div class="log" id="log">جاهز.</div>
+      </aside>
+    </main>
   </div>
 
   <script>
+    // عناصر DOM
     const fileInput = document.getElementById('file');
-    const btn = document.getElementById('btn');
-    const log = document.getElementById('log');
+    const fileInput2 = document.getElementById('file2');
     const player = document.getElementById('player');
-    const uploadSection = document.getElementById('uploadSection');
-    const fileInfo = document.getElementById('fileInfo');
-    const fileName = document.getElementById('fileName');
-    const fileSize = document.getElementById('fileSize');
-    const videoContainer = document.getElementById('videoContainer');
+    const log = document.getElementById('log');
+    const statusTxt = document.getElementById('statusTxt');
     const progressBar = document.getElementById('progressBar');
     const progressFill = document.getElementById('progressFill');
-    const templateSelector = document.getElementById('templateSelector');
     const templateOptions = document.getElementById('templateOptions');
     const applyTemplateBtn = document.getElementById('applyTemplateBtn');
+    const refreshTpl = document.getElementById('refreshTpl');
+    const playPause = document.getElementById('playPause');
+    const fitBtn = document.getElementById('fit');
+    const muteBtn = document.getElementById('mute');
+    const exportBtn = document.getElementById('exportBtn');
+    const searchInput = document.getElementById('searchInput');
+
+    // حالة
     let currentTrack = null;
     let selectedTemplate = null;
     let templates = null;
+    let vttBlobUrl = null;
 
-    function formatFileSize(bytes) {
-      if (bytes === 0) return '0 بايت';
-      const k = 1024;
-      const sizes = ['بايت', 'كيلوبايت', 'ميجابايت', 'جيجابايت'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    // أدوات مساعدة
+    function write(msg, type='info'){
+      const icon = type==='success' ? '✅' : type==='error' ? '⛔' : type==='loading' ? '⏳' : 'ℹ️';
+      log.textContent = `${icon} ${msg}`;
+      statusTxt.innerHTML = `${icon} ${msg}`;
     }
+    function showProgress(show){ progressBar.style.display = show ? 'block' : 'none'; if(show) progressFill.style.width = '0%'; }
+    function updateProgress(p){ progressFill.style.width = p + '%'; }
+    function formatSize(bytes){ const k=1024, units=['B','KB','MB','GB']; let i=Math.floor(Math.log(bytes)/Math.log(k)); return (bytes/Math.pow(k,i)).toFixed(2)+' '+units[i]; }
 
-    function write(msg, type = 'info') {
-      const icon = type === 'success' ? 'fas fa-check-circle' : 
-                   type === 'error' ? 'fas fa-exclamation-circle' : 
-                   type === 'loading' ? 'fas fa-spinner fa-spin' : 'fas fa-info-circle';
-      
-      log.innerHTML = `<i class="${icon}"></i> ${msg}`;
-      
-      if (type === 'success') {
-        log.classList.add('success-message');
-      } else if (type === 'error') {
-        log.classList.add('error-message');
-      } else {
-        log.classList.remove('success-message', 'error-message');
-      }
-    }
-
-    function showProgress(show) {
-      progressBar.style.display = show ? 'block' : 'none';
-      if (show) {
-        progressFill.style.width = '0%';
-      }
-    }
-
-    function updateProgress(percent) {
-      progressFill.style.width = percent + '%';
-    }
-
-    // تحميل قوالب الترجمة
-    async function loadTemplates() {
-      try {
-        const response = await fetch('captionTemplates.json');
-        templates = await response.json();
+    // تحميل القوالب
+    async function loadTemplates(){
+      try{
+        const resp = await fetch('captionTemplates.json', {cache:'no-store'});
+        templates = await resp.json();
         renderTemplateOptions();
-      } catch (error) {
-        console.error('خطأ في تحميل القوالب:', error);
-        write('خطأ في تحميل قوالب الترجمة', 'error');
+        write('تم تحميل القوالب بنجاح.', 'success');
+      }catch(e){
+        console.error(e);
+        write('خطأ في تحميل قوالب الترجمة.', 'error');
       }
     }
 
-    // عرض خيارات القوالب
-    function renderTemplateOptions() {
-      if (!templates) return;
-      
-      templateOptions.innerHTML = '';
-      
-      templates.templates.forEach(template => {
-        const option = document.createElement('div');
-        option.className = 'template-option';
-        option.dataset.templateId = template.id;
-        
-        option.innerHTML = `
-          <div class="template-preview">
-            <div class="template-preview-text" style="
-              font-family: ${template.fontFamily};
-              font-size: ${template.fontSize};
-              font-weight: ${template.fontWeight};
-              color: ${template.textColor};
-              background: ${template.background.enabled ? template.background.color : 'transparent'};
-              padding: ${template.background.paddingY} ${template.background.paddingX};
-              border-radius: ${template.background.borderRadius};
-              text-shadow: ${template.textShadow || 'none'};
-              border: ${template.border || 'none'};
-              box-shadow: ${template.boxShadow || 'none'};
-            ">
-              عينة نص
-            </div>
-          </div>
-          <div class="template-name">${template.name}</div>
-          <div class="template-description">${getTemplateDescription(template.id)}</div>
-        `;
-        
-        option.addEventListener('click', () => selectTemplate(template.id));
-        templateOptions.appendChild(option);
-      });
-    }
-
-    // وصف القوالب
-    function getTemplateDescription(templateId) {
-      const descriptions = {
-        'classic-white': 'كلاسيكي أبيض بسيط',
-        'tiktok-style': 'ملون بأسلوب تيك توك',
-        'karaoke': 'كاريوكي مع تمييز الكلمات',
-        'capsule': 'كبسولة أنيقة'
+    function templateDescription(id){
+      const map = {
+        'classic-white':'كلاسيكي أبيض بسيط',
+        'tiktok-style':'ملوّن بأسلوب تيك توك',
+        'karaoke':'كاريوكي مع تمييز الكلمات',
+        'capsule':'كبسولة أنيقة'
       };
-      return descriptions[templateId] || '';
+      return map[id] || '';
     }
 
-    // اختيار قالب
-    function selectTemplate(templateId) {
-      // إزالة التحديد من جميع القوالب
-      document.querySelectorAll('.template-option').forEach(option => {
-        option.classList.remove('selected');
+    function renderTemplateOptions(filter=''){
+      templateOptions.innerHTML = '';
+      if(!templates || !templates.templates){ return; }
+      const list = templates.templates.filter(t => t.name.includes(filter) || t.id.includes(filter));
+      list.forEach(t=>{
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.id = t.id;
+
+        const prev = document.createElement('div');
+        prev.className = 'preview';
+        const pill = document.createElement('div');
+        pill.className = 'pill';
+        pill.textContent = 'عينة نص';
+        pill.style.cssText = `
+          font-family:${t.fontFamily};
+          font-size:${t.fontSize};
+          font-weight:${t.fontWeight};
+          color:${t.textColor};
+          ${t.background?.enabled ? `background:${t.background.color}; padding:${t.background.paddingY} ${t.background.paddingX}; border-radius:${t.background.borderRadius};` : ''}
+          ${t.textShadow ? `text-shadow:${t.textShadow};` : ''}
+          ${t.border ? `border:${t.border};` : ''}
+          ${t.boxShadow ? `box-shadow:${t.boxShadow};` : ''}
+        `;
+        prev.appendChild(pill);
+
+        const title = document.createElement('div');
+        title.style.fontWeight='700';
+        title.textContent = t.name;
+
+        const desc = document.createElement('div');
+        desc.style.color='#94a3b8';
+        desc.style.fontSize='.9rem';
+        desc.textContent = templateDescription(t.id);
+
+        card.appendChild(prev);
+        card.appendChild(title);
+        card.appendChild(desc);
+
+        card.addEventListener('click', ()=>{
+          [...document.querySelectorAll('.card')].forEach(c=>c.classList.remove('selected'));
+          card.classList.add('selected');
+          selectedTemplate = t;
+          applyTemplateBtn.disabled = false;
+          write(`تم اختيار قالب: ${t.name}`, 'success');
+          // تطبيق فوري إن كانت هناك ترجمة
+          if(currentTrack){ applyTemplateStyles(selectedTemplate); }
+        });
+
+        templateOptions.appendChild(card);
       });
-      
-      // تحديد القالب المختار
-      const selectedOption = document.querySelector(`[data-template-id="${templateId}"]`);
-      if (selectedOption) {
-        selectedOption.classList.add('selected');
-        selectedTemplate = templates.templates.find(t => t.id === templateId);
-        write(`تم اختيار قالب: ${selectedTemplate.name}`, 'success');
-        
-        // تطبيق القالب فوراً إذا كان هناك ترجمة موجودة
-        if (currentTrack) {
-          applyTemplateStyles(selectedTemplate);
-          write(`تم تطبيق قالب ${selectedTemplate.name} على الترجمة الحالية`, 'success');
-        }
+
+      if(!list.length){
+        const empty = document.createElement('div');
+        empty.style.cssText='opacity:.7;padding:10px;text-align:center';
+        empty.textContent = 'لا توجد نتائج مطابقة.';
+        templateOptions.appendChild(empty);
       }
     }
 
-    // تطبيق تنسيق القالب على الترجمة
-    function applyTemplateStyles(template) {
-      if (!template) return;
-      
-      // إنشاء CSS مخصص للترجمة
+    function applyTemplateStyles(tpl){
+      if(!tpl) return;
+      // إزالة ستايل قديم
       const styleId = 'caption-template-styles';
-      let existingStyle = document.getElementById(styleId);
-      if (existingStyle) {
-        existingStyle.remove();
-      }
-      
+      document.getElementById(styleId)?.remove();
+
       const style = document.createElement('style');
       style.id = styleId;
-      
-      // CSS للترجمة - فقط للنص وليس للفيديو
       let css = `
-        video::cue {
-          font-family: ${template.fontFamily} !important;
-          font-size: ${template.fontSize} !important;
-          font-weight: ${template.fontWeight} !important;
-          color: ${template.textColor} !important;
-          text-align: ${template.align} !important;
-          text-shadow: ${template.textShadow || 'none'} !important;
-          position: relative !important;
-          bottom: 20px !important;
-          left: 50% !important;
-          transform: translateX(-50%) !important;
-          max-width: 90% !important;
-          display: inline-block !important;
-        }
-      `;
-      
-      if (template.background.enabled) {
+        video::cue{
+          font-family:${tpl.fontFamily} !important;
+          font-size:${tpl.fontSize} !important;
+          font-weight:${tpl.fontWeight} !important;
+          color:${tpl.textColor} !important;
+          text-align:${tpl.align} !important;
+          ${tpl.textShadow ? `text-shadow:${tpl.textShadow} !important;` : ''}
+          max-width:92% !important;
+          display:inline-block !important;
+          border-radius:6px !important;
+        }`;
+      if(tpl.background?.enabled){
         css += `
-          video::cue {
-            background: ${template.background.color} !important;
-            padding: ${template.background.paddingY} ${template.background.paddingX} !important;
-            border-radius: ${template.background.borderRadius} !important;
-          }
-        `;
+        video::cue{
+          background:${tpl.background.color} !important;
+          padding:${tpl.background.paddingY} ${tpl.background.paddingX} !important;
+          border-radius:${tpl.background.borderRadius} !important;
+        }`;
       }
-      
-      if (template.border) {
-        css += `
-          video::cue {
-            border: ${template.border} !important;
-          }
-        `;
-      }
-      
-      if (template.boxShadow) {
-        css += `
-          video::cue {
-            box-shadow: ${template.boxShadow} !important;
-          }
-        `;
-      }
-      
-      // إضافة تأثيرات الحركة
-      if (template.animation && templates.animations[template.animation]) {
-        const anim = templates.animations[template.animation];
+      if(tpl.border){ css += `video::cue{border:${tpl.border} !important;}`; }
+      if(tpl.boxShadow){ css += `video::cue{box-shadow:${tpl.boxShadow} !important;}`; }
+
+      if(tpl.animation && templates.animations?.[tpl.animation]){
+        const anim = templates.animations[tpl.animation];
         css += anim.keyframes + `
-          video::cue {
-            animation: ${template.animation} ${anim.duration} ${anim.timingFunction} !important;
-          }
-        `;
+          video::cue{ animation:${tpl.animation} ${anim.duration} ${anim.timingFunction} !important; }`;
       }
-      
+
       style.textContent = css;
       document.head.appendChild(style);
-      
-      // إعادة تحميل الترجمة لتطبيق التنسيق
-      if (currentTrack) {
-        const track = currentTrack;
-        const src = track.src;
-        track.src = '';
-        setTimeout(() => {
-          track.src = src;
-        }, 100);
+
+      // إعادة تحميل التراك لتطبيق التأثير
+      if(currentTrack){
+        const src = currentTrack.src;
+        currentTrack.src = '';
+        setTimeout(()=>{ currentTrack.src = src; }, 60);
       }
     }
 
-    // Drag and Drop functionality
-    uploadSection.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadSection.classList.add('dragover');
-    });
-
-    uploadSection.addEventListener('dragleave', (e) => {
-      e.preventDefault();
-      uploadSection.classList.remove('dragover');
-    });
-
-    uploadSection.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadSection.classList.remove('dragover');
-      
-      const files = e.dataTransfer.files;
-      if (files.length > 0) {
-        fileInput.files = files;
-        handleFileSelect();
-      }
-    });
-
-    function handleFileSelect() {
-      const file = fileInput.files?.[0];
-      if (!file) return;
-
-      // عرض معلومات الملف
-      fileName.textContent = file.name;
-      fileSize.textContent = formatFileSize(file.size);
-      fileInfo.classList.add('show');
-
-      // إظهار أداة اختيار القالب
-      templateSelector.style.display = 'block';
-
-      // تفعيل زر التحويل
-      btn.disabled = false;
-      write('تم اختيار الملف بنجاح! اختر قالب الترجمة ثم اضغط على "بدء التحويل".', 'success');
+    function attachLocalVideo(file){
+      const url = URL.createObjectURL(file);
+      player.src = url;
+      write(`تم اختيار ملف: ${file.name} (${formatSize(file.size)})`, 'success');
     }
 
-    fileInput.addEventListener('change', handleFileSelect);
-
-    // إضافة event listener للزر أيضاً
-    document.querySelector('.file-input-button').addEventListener('click', function(e) {
-      e.preventDefault();
-      fileInput.click();
-    });
-
-    // زر تطبيق القالب
-    applyTemplateBtn.addEventListener('click', function() {
-      if (selectedTemplate && currentTrack) {
-        applyTemplateStyles(selectedTemplate);
-        write(`تم تطبيق قالب ${selectedTemplate.name} بنجاح!`, 'success');
-      } else if (!selectedTemplate) {
-        write('من فضلك اختر قالب أولاً', 'error');
-      } else {
-        write('لا يوجد ترجمة لتطبيق القالب عليها', 'error');
-      }
-    });
-
-    btn.addEventListener('click', async () => {
-      const file = fileInput.files?.[0];
-      if (!file) { 
-        write('من فضلك اختر ملف فيديو أولاً.', 'error'); 
-        return; 
-      }
-
-      // عرض الفيديو محليًا فورًا
-      const localUrl = URL.createObjectURL(file);
-      player.src = localUrl;
-      videoContainer.style.display = 'block';
-
-      // إزالة track قديم
-      if (currentTrack) {
-        player.removeChild(currentTrack);
-        currentTrack = null;
-      }
-
-      btn.disabled = true;
+    async function transcribe(file){
       showProgress(true);
-      write('جاري الرفع والمعالجة...', 'loading');
+      write('جاري الرفع والمعالجة…', 'loading');
 
-      // محاكاة شريط التقدم
-      let progress = 0;
-      const progressInterval = setInterval(() => {
-        progress += Math.random() * 15;
-        if (progress > 90) progress = 90;
-        updateProgress(progress);
-      }, 500);
+      // تقدم وهمي حتى 90%
+      let p=0;
+      const iv = setInterval(()=>{ p = Math.min(90, p + Math.random()*12); updateProgress(Math.round(p)); }, 450);
 
-      try {
+      try{
         const fd = new FormData();
         fd.append('video', file);
 
-        const resp = await fetch('/api/transcribe', { method: 'POST', body: fd });
+        const resp = await fetch('/api/transcribe', {method:'POST', body:fd});
         const data = await resp.json();
 
-        clearInterval(progressInterval);
-        updateProgress(100);
+        clearInterval(iv); updateProgress(100);
 
-        if (!resp.ok) {
-          write(`حدث خطأ: ${data.error || 'unknown'}\n${data.details ? JSON.stringify(data.details, null, 2) : ''}`, 'error');
-          btn.disabled = false;
+        if(!resp.ok){
+          write(`خطأ: ${data.error || 'unknown'}`, 'error');
           showProgress(false);
           return;
         }
 
-        // استلام نص VTT من الخادم
         const vttText = data.vtt || '';
-        if (!vttText.trim()) {
-          write('لم يتم استلام ملف الترجمة.', 'error');
-          btn.disabled = false;
+        if(!vttText.trim()){
+          write('لم يتم استلام ملف ترجمة VTT.', 'error');
           showProgress(false);
           return;
         }
 
-        // إنشاء Blob VTT وربطه كـ track
-        const vttBlob = new Blob([vttText], { type: 'text/vtt' });
-        const vttUrl = URL.createObjectURL(vttBlob);
+        // نظّف مصدر قديم
+        if(vttBlobUrl){ URL.revokeObjectURL(vttBlobUrl); vttBlobUrl = null; }
+        currentTrack?.remove();
+
+        const blob = new Blob([vttText], {type:'text/vtt'});
+        vttBlobUrl = URL.createObjectURL(blob);
 
         const track = document.createElement('track');
         track.kind = 'subtitles';
         track.label = 'العربية';
         track.srclang = 'ar';
         track.default = true;
-        track.src = vttUrl;
-
+        track.src = vttBlobUrl;
         player.appendChild(track);
         currentTrack = track;
 
-        // إظهار زر تطبيق القالب
-        applyTemplateBtn.style.display = 'inline-block';
+        if(selectedTemplate){ applyTemplateStyles(selectedTemplate); }
 
-        // تطبيق القالب المختار
-        if (selectedTemplate) {
-          applyTemplateStyles(selectedTemplate);
-          write(`تم التحويل بنجاح! 🎉 شغّل الفيديو وستظهر الترجمة بقالب ${selectedTemplate.name}.`, 'success');
-        } else {
-          write('تم التحويل بنجاح! 🎉 شغّل الفيديو وستظهر الترجمة تلقائياً.', 'success');
-        }
-        
-        // إخفاء شريط التقدم بعد ثانيتين
-        setTimeout(() => {
-          showProgress(false);
-        }, 2000);
+        write('تم التحويل بنجاح! شغّل الفيديو لمشاهدة الترجمة.', 'success');
+        setTimeout(()=> showProgress(false), 1200);
 
-      } catch (e) {
-        clearInterval(progressInterval);
-        write('فشل في الاتصال بالخادم: ' + e.message, 'error');
+      }catch(e){
+        clearInterval(iv);
         showProgress(false);
-      } finally {
-        btn.disabled = false;
+        write('فشل الاتصال بالخادم: ' + e.message, 'error');
+      }
+    }
+
+    // أحداث
+    function onFilePicked(e){
+      const file = e.target.files?.[0];
+      if(!file) return;
+      attachLocalVideo(file);
+      transcribe(file);
+      applyTemplateBtn.disabled = !selectedTemplate;
+    }
+
+    fileInput.addEventListener('change', onFilePicked);
+    fileInput2.addEventListener('change', onFilePicked);
+
+    refreshTpl.addEventListener('click', ()=> loadTemplates());
+    applyTemplateBtn.addEventListener('click', ()=>{
+      if(selectedTemplate && currentTrack){ applyTemplateStyles(selectedTemplate); write(`طُبّق القالب: ${selectedTemplate.name}`, 'success'); }
+      else if(!selectedTemplate){ write('من فضلك اختر قالباً أولاً.', 'error'); }
+      else{ write('لا يوجد تراك ترجمة مطبق.', 'error'); }
+    });
+
+    playPause.addEventListener('click', ()=>{
+      if(player.paused){ player.play(); playPause.innerHTML='<i class="fa-solid fa-pause"></i>'; }
+      else{ player.pause(); playPause.innerHTML='<i class="fa-solid fa-play"></i>'; }
+    });
+
+    fitBtn.addEventListener('click', ()=>{
+      // ملاءمة بسيطة: إعادة تعيين style على الفيديو
+      player.style.maxWidth='100%'; player.style.maxHeight='100%';
+      write('تمت ملاءمة الفيديو داخل مساحة العمل.', 'success');
+    });
+
+    muteBtn.addEventListener('click', ()=>{
+      player.muted = !player.muted;
+      muteBtn.innerHTML = player.muted ? '<i class="fa-solid fa-volume-xmark"></i>' : '<i class="fa-solid fa-volume-high"></i>';
+    });
+
+    exportBtn.addEventListener('click', ()=>{
+      if(!vttBlobUrl){ write('لا يوجد ملف ترجمة للتصدير.', 'error'); return; }
+      const a = document.createElement('a');
+      a.href = vttBlobUrl;
+      a.download = 'subtitles.vtt';
+      a.click();
+      write('تم تنزيل ملف الترجمة.', 'success');
+    });
+
+    searchInput.addEventListener('input', (e)=>{ renderTemplateOptions(e.target.value.trim()); });
+
+    // سحب وإفلات فوق اللوحة الوسطى
+    const stage = document.getElementById('stage');
+    ;['dragenter','dragover'].forEach(evt=>{
+      stage.addEventListener(evt, e=>{ e.preventDefault(); stage.style.outline='2px dashed #3b82f6'; });
+    });
+    ;['dragleave','drop'].forEach(evt=>{
+      stage.addEventListener(evt, e=>{ e.preventDefault(); stage.style.outline='none'; });
+    });
+    stage.addEventListener('drop', e=>{
+      const file = e.dataTransfer?.files?.[0];
+      if(file && file.type.startsWith('video/')){
+        attachLocalVideo(file);
+        transcribe(file);
+      }else{
+        write('رجاءً أفلت ملف فيديو صالح.', 'error');
       }
     });
 
-    // إضافة تأثيرات تفاعلية للأزرار
-    document.querySelectorAll('button').forEach(button => {
-      button.addEventListener('mouseenter', function() {
-        this.style.transform = 'translateY(-2px)';
-      });
-      
-      button.addEventListener('mouseleave', function() {
-        if (!this.disabled) {
-          this.style.transform = 'translateY(0)';
-        }
-      });
-    });
-
-    // تحميل القوالب عند بدء تشغيل الصفحة
-    document.addEventListener('DOMContentLoaded', function() {
+    // بدء التشغيل
+    window.addEventListener('DOMContentLoaded', ()=>{
       loadTemplates();
+      write('جاهز. ارفع فيديو أو اسحب ملفك إلى مساحة العمل.');
     });
   </script>
 </body>
