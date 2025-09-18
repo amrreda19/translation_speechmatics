@@ -32,27 +32,113 @@ if (!SM_KEY) {
 
 app.use(express.static(__dirname));
 
-// تحويل SRT إلى VTT محليًا
+// تحويل SRT إلى VTT محليًا مع إصلاح أي تداخل زمني بين الكتل
 function convertSrtToVtt(srtText) {
-  const normalized = (srtText || '').replace(/\r\n/g, '\n').trim();
-  const lines = normalized.split('\n');
-  const outputLines = ['WEBVTT', ''];
+  const text = (srtText || '').replace(/\r\n/g, '\n').trim();
+  if (!text) return 'WEBVTT\n\n';
 
-  for (const line of lines) {
-    // حذف أرقام الكتل
-    if (/^\d+\s*$/.test(line)) continue;
+  const blocks = text.split(/\n\s*\n/);
 
-    // تحويل الفواصل العشرية في التوقيت من "," إلى "." فقط في سطر التوقيت
-    if (/\d{2}:\d{2}:\d{2},\d{3}\s-->\s\d{2}:\d{2}:\d{2},\d{3}/.test(line)) {
-      outputLines.push(line.replace(/,(?=\d{3}(?:\s|$))/g, '.'));
-      continue;
-    }
-
-    outputLines.push(line);
+  function parseTimeToSeconds(t) {
+    // HH:MM:SS,mmm أو HH:MM:SS.mmm
+    const m = t.trim().replace(',', '.').match(/^(\d{2}):(\d{2}):(\d{2})[\.,](\d{3})$/);
+    if (!m) return 0;
+    const hh = Number(m[1]);
+    const mm = Number(m[2]);
+    const ss = Number(m[3]);
+    const ms = Number(m[4]);
+    return hh * 3600 + mm * 60 + ss + ms / 1000;
   }
 
-  // تقليل الفراغات الزائدة بين الكتل
-  return outputLines.join('\n').replace(/\n{3,}/g, '\n\n');
+  function formatSecondsToVtt(t) {
+    if (t < 0) t = 0;
+    const hh = Math.floor(t / 3600);
+    const mm = Math.floor((t % 3600) / 60);
+    const ss = Math.floor(t % 60);
+    const ms = Math.round((t - Math.floor(t)) * 1000);
+    const pad = (n, l = 2) => String(n).padStart(l, '0');
+    return `${pad(hh)}:${pad(mm)}:${pad(ss)}.${pad(ms, 3)}`;
+  }
+
+  // استخراج الكتل
+  const cues = [];
+  for (const block of blocks) {
+    const lines = block.split('\n').filter(Boolean);
+    if (!lines.length) continue;
+
+    // قد يبدأ برقم تسلسلي، نتجاهله إن وُجد
+    let idx = 0;
+    if (/^\d+\s*$/.test(lines[0])) idx = 1;
+
+    const timingLine = lines[idx] || '';
+    const timingMatch = timingLine.match(/(\d{2}:\d{2}:\d{2}[\.,]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[\.,]\d{3})/);
+    if (!timingMatch) continue;
+
+    const start = parseTimeToSeconds(timingMatch[1]);
+    const end = parseTimeToSeconds(timingMatch[2]);
+    const textLines = lines.slice(idx + 1);
+
+    cues.push({ start, end, text: textLines.join('\n') });
+  }
+
+  // ترتيب وإصلاح التداخل
+  cues.sort((a, b) => a.start - b.start);
+  const minDuration = 0.35; // حد أدنى لظهور السطر
+  for (let i = 0; i < cues.length; i++) {
+    const prev = cues[i - 1];
+    const cue = cues[i];
+    if (prev && cue.start < prev.end) {
+      cue.start = prev.end; // ابدأ بعد انتهاء السابق مباشرة
+    }
+    if (cue.end <= cue.start) {
+      cue.end = cue.start + minDuration;
+    }
+    // منع تداخل النهاية مع بداية التالي
+    const next = cues[i + 1];
+    if (next && cue.end > next.start) {
+      cue.end = Math.max(next.start, cue.start + minDuration);
+    }
+  }
+
+  // توسعة الكتل متعددة الأسطر إلى كتل متسلسلة (سطر واحد لكل كتلة)
+  const expanded = [];
+  for (const cue of cues) {
+    const lines = (cue.text || '').split(/\n+/).map(s => s.trim()).filter(Boolean);
+    if (lines.length <= 1) {
+      expanded.push(cue);
+      continue;
+    }
+    const duration = Math.max(cue.end - cue.start, minDuration);
+    // قسمة زمن الكتلة على عدد الأسطر بالتساوي (أبسط وأضمن)
+    const slice = duration / lines.length;
+    let cursor = cue.start;
+    for (const line of lines) {
+      const s = cursor;
+      const e = Math.min(cue.end, s + Math.max(slice, minDuration));
+      expanded.push({ start: s, end: e, text: line });
+      cursor = e;
+    }
+  }
+
+  // إصلاح نهائي للتداخل بعد التوسعة
+  expanded.sort((a, b) => a.start - b.start);
+  for (let i = 0; i < expanded.length; i++) {
+    const prev = expanded[i - 1];
+    const cue = expanded[i];
+    if (prev && cue.start < prev.end) cue.start = prev.end;
+    if (cue.end <= cue.start) cue.end = cue.start + minDuration;
+    const next = expanded[i + 1];
+    if (next && cue.end > next.start) cue.end = Math.max(next.start, cue.start + minDuration);
+  }
+
+  // إخراج VTT
+  const out = ['WEBVTT', ''];
+  for (const cue of expanded) {
+    out.push(`${formatSecondsToVtt(cue.start)} --> ${formatSecondsToVtt(cue.end)}`);
+    out.push(cue.text || '');
+    out.push('');
+  }
+  return out.join('\n');
 }
 
 // Route للصفحة الرئيسية
