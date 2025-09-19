@@ -351,8 +351,8 @@
   .handle.se{right:-8px; bottom:-8px; cursor:nwse-resize}
   .handle.n{top:-8px; left:50%; transform:translateX(-50%); cursor:ns-resize}
   .handle.s{bottom:-8px; left:50%; transform:translateX(-50%); cursor:ns-resize}
-  .handle.w{left:-8px; top:50%; transform:translateY(-50%); cursor:ew-resize}
-  .handle.e{right:-8px; top:50%; transform:translateY(-50%); cursor:ew-resize}
+  .handle.w{left:-8px; top:50%; transform:translateY(-50%); cursor:ew-resize; width:8px; height:24px; border-radius:4px}
+  .handle.e{right:-8px; top:50%; transform:translateY(-50%); cursor:ew-resize; width:8px; height:24px; border-radius:4px}
 
   /* Reset button */
   .caption-reset-btn{
@@ -515,7 +515,7 @@
       resizeHandles.className = 'resize-handles';
       resizeHandles.setAttribute('aria-hidden', 'true');
       
-      const handleDirections = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+      const handleDirections = ['nw', 'ne', 'e', 'se', 'sw', 'w'];
       handleDirections.forEach(dir => {
         const handle = document.createElement('div');
         handle.className = `handle ${dir}`;
