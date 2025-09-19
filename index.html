@@ -317,6 +317,60 @@
     }
 
   </style>
+
+<!-- Caption Overlay CSS (drag + resize + physics) -->
+<style>
+  /* Caption container sits above the video */
+  .caption-container{
+    position:absolute; z-index:5; pointer-events:none;
+    left:50%; top:90%; transform:translate(-50%,-50%);
+  }
+  .caption-box{
+    position:relative; pointer-events:auto;
+    background:rgba(0,0,0,.85);
+    color:#fff; padding:12px 16px; border-radius:10px;
+    font-weight:700; text-align:center; line-height:1.4;
+    border:1px solid rgba(255,255,255,.12);
+    box-shadow:0 10px 28px rgba(0,0,0,.45);
+    text-shadow:0 1px 2px rgba(0,0,0,.6);
+    cursor:grab; user-select:none; touch-action:none;
+  }
+  .caption-box:active{cursor:grabbing}
+  .caption-text{display:inline-block; max-width:100%; word-wrap:break-word}
+
+  /* Professional resize handles */
+  .resize-handles{position:absolute; inset:0; pointer-events:none}
+  .handle{
+    position:absolute; width:12px; height:12px;
+    border:2px solid #fff; background:#3b82f6; border-radius:3px;
+    box-shadow:0 0 0 2px rgba(0,0,0,.35); pointer-events:auto;
+  }
+  .handle.nw{left:-8px; top:-8px; cursor:nwse-resize}
+  .handle.ne{right:-8px; top:-8px; cursor:nesw-resize}
+  .handle.sw{left:-8px; bottom:-8px; cursor:nesw-resize}
+  .handle.se{right:-8px; bottom:-8px; cursor:nwse-resize}
+  .handle.n{top:-8px; left:50%; transform:translateX(-50%); cursor:ns-resize}
+  .handle.s{bottom:-8px; left:50%; transform:translateX(-50%); cursor:ns-resize}
+  .handle.w{left:-8px; top:50%; transform:translateY(-50%); cursor:ew-resize}
+  .handle.e{right:-8px; top:50%; transform:translateY(-50%); cursor:ew-resize}
+
+  /* Reset button */
+  .caption-reset-btn{
+    position:absolute; top:-10px; right:-10px; width:26px; height:26px;
+    border-radius:50%; background:#ef4444; border:2px solid #fff; color:#fff;
+    font-weight:800; display:flex; align-items:center; justify-content:center;
+    font-size:12px; cursor:pointer; opacity:0; transition:.18s ease; z-index:6;
+  }
+  .caption-container:hover .caption-reset-btn{opacity:1}
+  .caption-reset-btn:hover{transform:scale(1.07); background:#dc2626}
+
+  /* subtle focus ring */
+  .caption-box.caption-focus{
+    outline:2px solid #60a5fa;
+    box-shadow:0 0 0 6px rgba(96,165,250,.35), 0 10px 28px rgba(0,0,0,.45);
+  }
+</style>
+
 </head>
 <body>
   <div class="app">
@@ -358,6 +412,8 @@
 
           <div class="stage" id="stage">
             <video id="player" controls crossorigin="anonymous"></video>
+
+
             
           </div>
 
@@ -454,111 +510,303 @@
       captionBox.setAttribute('dir', 'auto');
       captionBox.textContent = 'جاهز للعرض...';
       
+      // إنشاء مقابض تغيير الحجم
+      const resizeHandles = document.createElement('div');
+      resizeHandles.className = 'resize-handles';
+      resizeHandles.setAttribute('aria-hidden', 'true');
+      
+      const handleDirections = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+      handleDirections.forEach(dir => {
+        const handle = document.createElement('div');
+        handle.className = `handle ${dir}`;
+        handle.setAttribute('data-dir', dir);
+        resizeHandles.appendChild(handle);
+      });
+      
       // إنشاء زر إعادة تعيين الموضع
       const resetBtn = document.createElement('button');
-      resetBtn.className = 'reset-position-btn';
-      resetBtn.innerHTML = '<i class="fa-solid fa-undo"></i>';
-      resetBtn.title = 'إعادة تعيين الموضع';
+      resetBtn.className = 'caption-reset-btn';
+      resetBtn.innerHTML = '⟳';
+      resetBtn.title = 'إعادة التعيين';
       resetBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         resetCaptionPosition();
       });
       
       // إضافة العناصر
+      captionBox.appendChild(resizeHandles);
       captionContainer.appendChild(captionBox);
       captionContainer.appendChild(resetBtn);
       
-      // إضافة أحداث السحب
-      captionBox.addEventListener('mousedown', startDrag);
-      captionBox.addEventListener('touchstart', startDrag, {passive: false});
-      document.addEventListener('mousemove', drag);
-      document.addEventListener('touchmove', drag, {passive: false});
-      document.addEventListener('mouseup', endDrag);
-      document.addEventListener('touchend', endDrag);
-      
-      // رسالة تشخيصية
-      console.log('تم إنشاء الكابشن وربط أحداث السحب');
+      // إضافة أحداث السحب والتحكم
+      setupCaptionInteractions();
       
       // إضافة الكابشن إلى المرحلة
       document.getElementById('stage').appendChild(captionContainer);
       
-      
       // تحليل ملف VTT
       parseVTTFile();
       
-      write('تم إنشاء نظام الكابشن بنجاح', 'success');
-      
-      // رسالة تشخيصية إضافية
-      console.log('الكابشن جاهز للسحب - اضغط واسحب لتحريكه');
+      write('تم إنشاء نظام الكابشن المحسن بنجاح', 'success');
     }
     
-    function startDrag(e) {
-      if (!captionBox || !captionContainer) {
-        console.log('خطأ: الكابشن غير موجود');
-        return;
+    // إعداد تفاعلات الكابشن المحسن
+    function setupCaptionInteractions() {
+      if (!captionBox || !captionContainer) return;
+      
+      // متغيرات الحالة
+      let dragging = false;
+      let resizing = false;
+      let dir = null;
+      let startX = 0, startY = 0;
+      let stageRect = null;
+      let vel = { vx: 0, vy: 0 };
+      let lastMoveTime = 0;
+      let inertialRAF = null;
+      let springRAF = null;
+      
+      // متغيرات الحجم والخط
+      let widthPc = 60;
+      let fontPx = 20;
+      const MIN_W = 20, MAX_W = 95;
+      const MIN_FONT = 12, MAX_FONT = 60;
+      
+      // ثوابت الفيزياء
+      const FRICTION = 0.92, BOUNCE = 0.5;
+      const SPRING_K = 0.18, SPRING_D = 0.75;
+      let velSpring = { w: 0, f: 0 };
+      let target = { width: null, font: null };
+      
+      const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+      
+      // تطبيق الحالة المحفوظة
+      loadCaptionState();
+      applyCaptionState();
+      
+      // دالة حفظ الحالة
+      function saveCaptionState() {
+        try {
+          const state = {
+            pos: captionPosition,
+            widthPc: widthPc,
+            fontPx: fontPx
+          };
+          localStorage.setItem('captionState', JSON.stringify(state));
+        } catch (e) {}
       }
       
-      e.preventDefault();
-      e.stopPropagation();
-      isDragging = true;
-      captionBox.classList.add('dragging');
+      // دالة تحميل الحالة
+      function loadCaptionState() {
+        try {
+          const saved = localStorage.getItem('captionState');
+          if (saved) {
+            const state = JSON.parse(saved);
+            if (state.pos) captionPosition = state.pos;
+            if (state.widthPc) widthPc = state.widthPc;
+            if (state.fontPx) fontPx = state.fontPx;
+          }
+        } catch (e) {}
+      }
       
-      const rect = document.getElementById('stage').getBoundingClientRect();
-      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+      // دالة تطبيق الحالة
+      function applyCaptionState() {
+        captionContainer.style.left = captionPosition.x + '%';
+        captionContainer.style.top = captionPosition.y + '%';
+        captionBox.style.width = widthPc + '%';
+        captionBox.style.fontSize = fontPx + 'px';
+      }
       
-      dragStartX = clientX - rect.left;
-      dragStartY = clientY - rect.top;
+      // دالة القصور الذاتي
+      function inertiaStep() {
+        captionPosition.x += vel.vx;
+        captionPosition.y += vel.vy;
+        
+        let bounced = false;
+        if (captionPosition.x < 5) { captionPosition.x = 5; vel.vx = -vel.vx * BOUNCE; bounced = true; }
+        if (captionPosition.x > 95) { captionPosition.x = 95; vel.vx = -vel.vx * BOUNCE; bounced = true; }
+        if (captionPosition.y < 5) { captionPosition.y = 5; vel.vy = -vel.vy * BOUNCE; bounced = true; }
+        if (captionPosition.y > 95) { captionPosition.y = 95; vel.vy = -vel.vy * BOUNCE; bounced = true; }
+        
+        vel.vx *= FRICTION;
+        vel.vy *= FRICTION;
+        
+        captionContainer.style.left = captionPosition.x + '%';
+        captionContainer.style.top = captionPosition.y + '%';
+        
+        if (Math.hypot(vel.vx, vel.vy) < 0.02 && !bounced) {
+          inertialRAF = null;
+          saveCaptionState();
+          return;
+        }
+        inertialRAF = requestAnimationFrame(inertiaStep);
+      }
       
-      // منع التحديد النصي
-      document.body.style.userSelect = 'none';
-      document.body.style.cursor = 'move';
+      // دالة النابض للتغيير
+      function springStep() {
+        const dt = 1;
+        if (target.width != null) {
+          const x = widthPc, g = target.width;
+          const a = SPRING_K * (g - x) - SPRING_D * velSpring.w;
+          velSpring.w += a * dt;
+          widthPc += velSpring.w * dt;
+          widthPc = clamp(widthPc, MIN_W, MAX_W);
+          captionBox.style.width = widthPc + '%';
+        }
+        if (target.font != null) {
+          const x = fontPx, g = target.font;
+          const a = SPRING_K * (g - x) - SPRING_D * velSpring.f;
+          velSpring.f += a * dt;
+          fontPx += velSpring.f * dt;
+          fontPx = clamp(fontPx, MIN_FONT, MAX_FONT);
+          captionBox.style.fontSize = fontPx + 'px';
+        }
+        const nearW = target.width == null || Math.abs(target.width - widthPc) < 0.05;
+        const nearF = target.font == null || Math.abs(target.font - fontPx) < 0.05;
+        if (nearW && nearF) {
+          springRAF = null;
+          saveCaptionState();
+          return;
+        }
+        springRAF = requestAnimationFrame(springStep);
+      }
       
-      // رسالة تشخيصية
-      console.log('بدء السحب - الكابشن جاهز للتحريك');
+      // أحداث السحب
+      captionBox.addEventListener('pointerdown', (e) => {
+        if (e.target.classList.contains('handle')) return;
+        dragging = true;
+        captionBox.setPointerCapture(e.pointerId);
+        stageRect = document.getElementById('stage').getBoundingClientRect();
+        startX = e.clientX;
+        startY = e.clientY;
+        lastMoveTime = performance.now();
+        if (inertialRAF) {
+          cancelAnimationFrame(inertialRAF);
+          inertialRAF = null;
+        }
+        vel.vx = 0;
+        vel.vy = 0;
+        captionBox.classList.add('caption-focus');
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+      });
+      
+      captionBox.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const now = performance.now();
+        const dt = Math.max(1, now - lastMoveTime);
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        
+        const px = (dx / stageRect.width) * 100;
+        const py = (dy / stageRect.height) * 100;
+        
+        captionPosition.x = clamp(captionPosition.x + px, 5, 95);
+        captionPosition.y = clamp(captionPosition.y + py, 5, 95);
+        captionContainer.style.left = captionPosition.x + '%';
+        captionContainer.style.top = captionPosition.y + '%';
+        
+        vel.vx = (px) / dt * 16.67;
+        vel.vy = (py) / dt * 16.67;
+        
+        startX = e.clientX;
+        startY = e.clientY;
+        lastMoveTime = now;
+      });
+      
+      captionBox.addEventListener('pointerup', () => {
+        if (!dragging) return;
+        dragging = false;
+        document.body.style.userSelect = '';
+        captionBox.classList.remove('caption-focus');
+        inertialRAF = requestAnimationFrame(inertiaStep);
+      });
+      
+      captionBox.addEventListener('pointercancel', () => {
+        dragging = false;
+        document.body.style.userSelect = '';
+        captionBox.classList.remove('caption-focus');
+      });
+      
+      // أحداث تغيير الحجم
+      Array.from(captionBox.querySelectorAll('.handle')).forEach(handle => {
+        handle.addEventListener('pointerdown', (e) => {
+          dir = handle.dataset.dir;
+          resizing = true;
+          captionBox.setPointerCapture(e.pointerId);
+          stageRect = document.getElementById('stage').getBoundingClientRect();
+          const startRX = e.clientX;
+          const startRY = e.clientY;
+          const w0 = widthPc;
+          const f0 = fontPx;
+          if (springRAF) {
+            cancelAnimationFrame(springRAF);
+            springRAF = null;
+          }
+          velSpring.w = 0;
+          velSpring.f = 0;
+          captionBox.classList.add('caption-focus');
+          document.body.style.userSelect = 'none';
+          e.preventDefault();
+          
+          function onMove(ev) {
+            if (!resizing) return;
+            const dx = ev.clientX - startRX;
+            const dy = ev.clientY - startRY;
+            let nextW = widthPc, nextF = fontPx;
+            if (dir.includes('e') || dir.includes('w')) {
+              const dPct = (dx / stageRect.width) * 100 * (dir.includes('e') ? 1 : -1);
+              nextW = clamp(w0 + dPct, MIN_W, MAX_W);
+            }
+            if (dir.includes('n') || dir.includes('s')) {
+              const sign = dir.includes('s') ? 1 : -1;
+              const dScale = 1 + (sign * dy) / 320;
+              nextF = clamp(f0 * dScale, MIN_FONT, MAX_FONT);
+            }
+            target.width = nextW;
+            target.font = nextF;
+            if (!springRAF) springRAF = requestAnimationFrame(springStep);
+          }
+          
+          function onUp() {
+            resizing = false;
+            dir = null;
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup', onUp);
+            document.body.style.userSelect = '';
+            captionBox.classList.remove('caption-focus');
+            saveCaptionState();
+          }
+          
+          document.addEventListener('pointermove', onMove);
+          document.addEventListener('pointerup', onUp);
+        });
+      });
+      
+      // دالة إعادة التعيين
+      function resetCaptionPosition() {
+        captionPosition = { x: 50, y: 90 };
+        widthPc = 60;
+        fontPx = 20;
+        target.width = widthPc;
+        target.font = fontPx;
+        if (!springRAF) springRAF = requestAnimationFrame(springStep);
+        if (inertialRAF) {
+          cancelAnimationFrame(inertialRAF);
+          inertialRAF = null;
+        }
+        write('تم إعادة تعيين موضع وحجم الكابشن', 'success');
+      }
+      
+      // ربط زر إعادة التعيين
+      const resetBtn = captionContainer.querySelector('.caption-reset-btn');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          resetCaptionPosition();
+        });
+      }
     }
     
-    function drag(e) {
-      if (!isDragging || !captionContainer) return;
-      e.preventDefault();
-      
-      const rect = document.getElementById('stage').getBoundingClientRect();
-      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-      
-      const x = clientX - rect.left;
-      const y = clientY - rect.top;
-      
-      // حساب النسبة المئوية للموضع مع تقييد الحركة داخل الإطار
-      const percentX = Math.max(5, Math.min(95, (x / rect.width) * 100));
-      const percentY = Math.max(5, Math.min(95, (y / rect.height) * 100));
-      
-      captionPosition.x = percentX;
-      captionPosition.y = percentY;
-      
-      captionContainer.style.left = percentX + '%';
-      captionContainer.style.top = percentY + '%';
-      
-      // رسالة تشخيصية (فقط عند أول سحب)
-      if (Math.random() < 0.01) { // 1% من الوقت لتجنب الإفراط في الرسائل
-        console.log(`سحب الكابشن إلى: ${percentX.toFixed(1)}%, ${percentY.toFixed(1)}%`);
-      }
-    }
-    
-    function endDrag(e) {
-      if (!isDragging) return;
-      isDragging = false;
-      if (captionBox) {
-        captionBox.classList.remove('dragging');
-      }
-      
-      // إعادة تعيين المؤشر
-      document.body.style.userSelect = '';
-      document.body.style.cursor = '';
-      
-      // حفظ الموضع
-      saveCaptionPosition();
-    }
     
     function saveCaptionPosition() {
       localStorage.setItem('captionPosition', JSON.stringify(captionPosition));
@@ -582,7 +830,12 @@
     }
     
     function resetCaptionPosition() {
-      setCaptionPosition(50, 90); // وسط أسفل
+      captionPosition = { x: 50, y: 90 };
+      if (captionContainer) {
+        captionContainer.style.left = '50%';
+        captionContainer.style.top = '90%';
+        saveCaptionPosition();
+      }
       write('تم إعادة تعيين موضع الكابشن إلى الوسط السفلي', 'success');
     }
     
@@ -675,7 +928,14 @@
       const newText = activeCue ? activeCue.text : '';
       if (newText !== currentCaptionText) {
         currentCaptionText = newText;
+        
+        // تحديث النص مع الحفاظ على المقابض
+        const resizeHandles = captionBox.querySelector('.resize-handles');
+        captionBox.innerHTML = '';
         captionBox.textContent = newText;
+        if (resizeHandles) {
+          captionBox.appendChild(resizeHandles);
+        }
         
         // إخفاء الكابشن إذا لم يكن هناك نص
         captionContainer.style.display = newText ? 'block' : 'none';
@@ -770,12 +1030,17 @@
       
       // تطبيق القالب على الكابشن المحسن فقط
       if(captionBox && tpl){
+        // الحفاظ على الخصائص الأساسية للتحكم
+        const currentWidth = captionBox.style.width || '60%';
+        const currentFontSize = captionBox.style.fontSize || '20px';
+        
         captionBox.style.cssText = `
           font-family: ${tpl.fontFamily};
           font-size: ${tpl.fontSize};
           font-weight: ${tpl.fontWeight};
           color: ${tpl.textColor};
           text-align: ${tpl.align};
+          width: ${currentWidth};
           ${tpl.textShadow ? `text-shadow: ${tpl.textShadow};` : ''}
           ${tpl.background?.enabled ? `
             background: ${tpl.background.color};
@@ -784,6 +1049,11 @@
           ` : 'background: rgba(0,0,0,0.85); padding: 12px 16px; border-radius: 8px;'}
           ${tpl.border ? `border: ${tpl.border};` : ''}
           ${tpl.boxShadow ? `box-shadow: ${tpl.boxShadow};` : ''}
+          cursor: grab;
+          user-select: none;
+          touch-action: none;
+          position: relative;
+          pointer-events: auto;
         `;
         
         write(`تم تطبيق القالب: ${tpl.name}`, 'success');
@@ -931,5 +1201,7 @@
       write('جاهز. ارفع فيديو أو اسحب ملفك إلى مساحة العمل.');
     });
   </script>
+
+
 </body>
 </html>
