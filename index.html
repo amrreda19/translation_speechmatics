@@ -123,8 +123,8 @@
       background:#000;
     }
     video{
-      max-width:60%; 
-      max-height:60%; 
+      max-width:100%; 
+      max-height:100%; 
       display:block;
       border:2px solid #334155;
       border-radius:8px;
@@ -204,6 +204,126 @@
       font-size: 18px; color:#fff; text-shadow: 2px 2px 4px rgba(0,0,0,.8);
       background: rgba(0,0,0,.75); padding:8px 12px; border-radius:6px;
     }
+
+    /* نظام الكابشن المحسن */
+    .caption-container {
+      position: absolute;
+      z-index: 1000;
+      pointer-events: none;
+      transition: none;
+    }
+
+    .caption-box {
+      position: relative;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-family: 'Cairo', Arial, sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      text-align: center;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      border: 2px solid transparent;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      max-width: 90%;
+      word-wrap: break-word;
+      line-height: 1.4;
+      pointer-events: auto;
+      cursor: move;
+      user-select: none;
+      touch-action: none;
+      transform: translate(-50%, -50%);
+      transition: all 0.2s ease;
+      z-index: 1001;
+    }
+
+    .caption-box:hover {
+      background: rgba(0, 0, 0, 0.95);
+      border-color: #3b82f6;
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .caption-box.dragging {
+      opacity: 0.9;
+      transform: translate(-50%, -50%) scale(1.02);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+      border-color: #60a5fa;
+    }
+
+    .caption-box.drag-mode {
+      border-color: #22c55e;
+      background: rgba(0, 0, 0, 0.9);
+    }
+
+    /* زر إعادة تعيين الموضع */
+    .reset-position-btn {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #ef4444;
+      border: 2px solid white;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      opacity: 0;
+      transition: all 0.2s ease;
+      z-index: 1001;
+    }
+
+    .caption-container:hover .reset-position-btn {
+      opacity: 1;
+    }
+
+    .reset-position-btn:hover {
+      background: #dc2626;
+      transform: scale(1.1);
+    }
+
+    /* أزرار تحكم موضع الكابشن */
+    .caption-controls {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      gap: 8px;
+      z-index: 1001;
+    }
+
+    .caption-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--border);
+      color: #cbd5e1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(10px);
+    }
+
+    .caption-btn:hover {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: #3b82f6;
+      color: #60a5fa;
+      transform: translateY(-2px);
+    }
+
+    .caption-btn.active {
+      background: #3b82f6;
+      color: white;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
   </style>
 </head>
 <body>
@@ -246,6 +366,25 @@
 
           <div class="stage" id="stage">
             <video id="player" controls crossorigin="anonymous"></video>
+            
+            <!-- أزرار تحكم موضع الكابشن -->
+            <div class="caption-controls" id="captionControls" style="display: none;">
+              <button class="caption-btn" id="dragModeBtn" title="وضع السحب">
+                <i class="fa-solid fa-hand"></i>
+              </button>
+              <button class="caption-btn" id="resetPositionBtn" title="إعادة تعيين الموضع">
+                <i class="fa-solid fa-undo"></i>
+              </button>
+              <button class="caption-btn" id="topPositionBtn" title="أعلى">
+                <i class="fa-solid fa-arrow-up"></i>
+              </button>
+              <button class="caption-btn" id="centerPositionBtn" title="وسط">
+                <i class="fa-solid fa-arrows-up-down"></i>
+              </button>
+              <button class="caption-btn" id="bottomPositionBtn" title="أسفل">
+                <i class="fa-solid fa-arrow-down"></i>
+              </button>
+            </div>
           </div>
 
           <div class="statusbar">
@@ -296,6 +435,18 @@
     let selectedTemplate = null;
     let templates = null;
     let vttBlobUrl = null;
+    
+    // حالة نظام الكابشن المحسن
+    let isDragMode = false;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let captionPosition = { x: 50, y: 90 }; // موضع افتراضي (وسط أسفل)
+    let captionContainer = null;
+    let captionBox = null;
+    let currentCaptionText = '';
+    let vttCues = [];
+    let currentCueIndex = -1;
 
     // أدوات مساعدة
     function write(msg, type='info'){
@@ -306,6 +457,276 @@
     function showProgress(show){ progressBar.style.display = show ? 'block' : 'none'; if(show) progressFill.style.width = '0%'; }
     function updateProgress(p){ progressFill.style.width = p + '%'; }
     function formatSize(bytes){ const k=1024, units=['B','KB','MB','GB']; let i=Math.floor(Math.log(bytes)/Math.log(k)); return (bytes/Math.pow(k,i)).toFixed(2)+' '+units[i]; }
+
+    // دوال نظام الكابشن المحسن
+    function createCaptionSystem() {
+      if (!currentTrack) return;
+      
+      // إزالة النظام القديم إذا كان موجوداً
+      if (captionContainer) {
+        captionContainer.remove();
+      }
+      
+      // إنشاء حاوية الكابشن
+      captionContainer = document.createElement('div');
+      captionContainer.className = 'caption-container';
+      captionContainer.style.cssText = `
+        left: ${captionPosition.x}%;
+        top: ${captionPosition.y}%;
+      `;
+      
+      // إنشاء صندوق الكابشن
+      captionBox = document.createElement('div');
+      captionBox.className = 'caption-box';
+      captionBox.setAttribute('dir', 'auto');
+      captionBox.textContent = 'جاهز للعرض...';
+      
+      // إنشاء زر إعادة تعيين الموضع
+      const resetBtn = document.createElement('button');
+      resetBtn.className = 'reset-position-btn';
+      resetBtn.innerHTML = '<i class="fa-solid fa-undo"></i>';
+      resetBtn.title = 'إعادة تعيين الموضع';
+      resetBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        resetCaptionPosition();
+      });
+      
+      // إضافة العناصر
+      captionContainer.appendChild(captionBox);
+      captionContainer.appendChild(resetBtn);
+      
+      // إضافة أحداث السحب
+      captionBox.addEventListener('mousedown', startDrag);
+      captionBox.addEventListener('touchstart', startDrag, {passive: false});
+      document.addEventListener('mousemove', drag);
+      document.addEventListener('touchmove', drag, {passive: false});
+      document.addEventListener('mouseup', endDrag);
+      document.addEventListener('touchend', endDrag);
+      
+      // رسالة تشخيصية
+      console.log('تم إنشاء الكابشن وربط أحداث السحب');
+      
+      // إضافة الكابشن إلى المرحلة
+      document.getElementById('stage').appendChild(captionContainer);
+      
+      // إظهار أزرار التحكم
+      document.getElementById('captionControls').style.display = 'flex';
+      
+      // تحليل ملف VTT
+      parseVTTFile();
+      
+      write('تم إنشاء نظام الكابشن بنجاح', 'success');
+      
+      // رسالة تشخيصية إضافية
+      console.log('الكابشن جاهز للسحب - اضغط واسحب لتحريكه');
+    }
+    
+    function startDrag(e) {
+      if (!captionBox || !captionContainer) {
+        console.log('خطأ: الكابشن غير موجود');
+        return;
+      }
+      
+      e.preventDefault();
+      e.stopPropagation();
+      isDragging = true;
+      captionBox.classList.add('dragging');
+      
+      const rect = document.getElementById('stage').getBoundingClientRect();
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+      
+      dragStartX = clientX - rect.left;
+      dragStartY = clientY - rect.top;
+      
+      // منع التحديد النصي
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'move';
+      
+      // رسالة تشخيصية
+      console.log('بدء السحب - الكابشن جاهز للتحريك');
+    }
+    
+    function drag(e) {
+      if (!isDragging || !captionContainer) return;
+      e.preventDefault();
+      
+      const rect = document.getElementById('stage').getBoundingClientRect();
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+      
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      
+      // حساب النسبة المئوية للموضع مع تقييد الحركة داخل الإطار
+      const percentX = Math.max(5, Math.min(95, (x / rect.width) * 100));
+      const percentY = Math.max(5, Math.min(95, (y / rect.height) * 100));
+      
+      captionPosition.x = percentX;
+      captionPosition.y = percentY;
+      
+      captionContainer.style.left = percentX + '%';
+      captionContainer.style.top = percentY + '%';
+      
+      // رسالة تشخيصية (فقط عند أول سحب)
+      if (Math.random() < 0.01) { // 1% من الوقت لتجنب الإفراط في الرسائل
+        console.log(`سحب الكابشن إلى: ${percentX.toFixed(1)}%, ${percentY.toFixed(1)}%`);
+      }
+    }
+    
+    function endDrag(e) {
+      if (!isDragging) return;
+      isDragging = false;
+      if (captionBox) {
+        captionBox.classList.remove('dragging');
+      }
+      
+      // إعادة تعيين المؤشر
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      
+      // حفظ الموضع
+      saveCaptionPosition();
+    }
+    
+    function saveCaptionPosition() {
+      localStorage.setItem('captionPosition', JSON.stringify(captionPosition));
+    }
+    
+    function loadCaptionPosition() {
+      const saved = localStorage.getItem('captionPosition');
+      if (saved) {
+        captionPosition = JSON.parse(saved);
+      }
+    }
+    
+    function setCaptionPosition(x, y) {
+      captionPosition.x = x;
+      captionPosition.y = y;
+      if (captionContainer) {
+        captionContainer.style.left = x + '%';
+        captionContainer.style.top = y + '%';
+        saveCaptionPosition();
+      }
+    }
+    
+    function resetCaptionPosition() {
+      setCaptionPosition(50, 90); // وسط أسفل
+      write('تم إعادة تعيين موضع الكابشن إلى الوسط السفلي', 'success');
+    }
+    
+    function toggleDragMode() {
+      isDragMode = !isDragMode;
+      const btn = document.getElementById('dragModeBtn');
+      btn.classList.toggle('active', isDragMode);
+      
+      if (isDragMode) {
+        write('وضع السحب مفعل - يمكنك الآن سحب الكابشن', 'success');
+        if (captionBox) {
+          captionBox.classList.add('drag-mode');
+        }
+      } else {
+        write('وضع السحب معطل - الكابشن قابل للسحب دائماً', 'info');
+        if (captionBox) {
+          captionBox.classList.remove('drag-mode');
+        }
+      }
+    }
+    
+    // دالة تحليل ملف VTT
+    function parseVTTFile() {
+      if (!currentTrack || !vttBlobUrl) return;
+      
+      fetch(vttBlobUrl)
+        .then(response => response.text())
+        .then(vttText => {
+          vttCues = parseVTTText(vttText);
+          setupCaptionSync();
+          write(`تم تحليل ${vttCues.length} نص ترجمة`, 'success');
+        })
+        .catch(error => {
+          console.error('خطأ في تحليل ملف VTT:', error);
+          write('خطأ في تحليل ملف الترجمة', 'error');
+        });
+    }
+    
+    // دالة تحليل نص VTT
+    function parseVTTText(vttText) {
+      const cues = [];
+      const lines = vttText.split('\n');
+      let currentCue = null;
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        
+        // تخطي الرأس
+        if (line === 'WEBVTT' || line === '') continue;
+        
+        // البحث عن توقيت
+        if (line.includes('-->')) {
+          const parts = line.split('-->');
+          if (parts.length === 2) {
+            const startTime = parts[0].trim();
+            const endTime = parts[1].trim();
+            if (currentCue) cues.push(currentCue);
+            currentCue = {
+              start: timeToSeconds(startTime),
+              end: timeToSeconds(endTime),
+              text: ''
+            };
+          }
+        } else if (currentCue && line !== '') {
+          currentCue.text += (currentCue.text ? ' ' : '') + line;
+        }
+      }
+      
+      if (currentCue) cues.push(currentCue);
+      return cues;
+    }
+    
+    // تحويل الوقت إلى ثواني
+    function timeToSeconds(timeStr) {
+      const parts = timeStr.split(':');
+      const hours = parseInt(parts[0]);
+      const minutes = parseInt(parts[1]);
+      const seconds = parseFloat(parts[2]);
+      return hours * 3600 + minutes * 60 + seconds;
+    }
+    
+    // إعداد مزامنة الكابشن
+    function setupCaptionSync() {
+      if (!player || !vttCues.length) return;
+      
+      player.addEventListener('timeupdate', updateCaption);
+      player.addEventListener('seeked', updateCaption);
+    }
+    
+    // تحديث نص الكابشن حسب الوقت
+    function updateCaption() {
+      if (!player || !vttCues.length || !captionBox) return;
+      
+      const currentTime = player.currentTime;
+      let activeCue = null;
+      
+      // البحث عن النص المناسب للوقت الحالي
+      for (let i = 0; i < vttCues.length; i++) {
+        const cue = vttCues[i];
+        if (currentTime >= cue.start && currentTime <= cue.end) {
+          activeCue = cue;
+          break;
+        }
+      }
+      
+      // تحديث النص
+      const newText = activeCue ? activeCue.text : '';
+      if (newText !== currentCaptionText) {
+        currentCaptionText = newText;
+        captionBox.textContent = newText;
+        
+        // إخفاء الكابشن إذا لم يكن هناك نص
+        captionContainer.style.display = newText ? 'block' : 'none';
+      }
+    }
 
     // تحميل القوالب
     async function loadTemplates(){
@@ -436,6 +857,25 @@
         currentTrack.src = '';
         setTimeout(()=>{ currentTrack.src = src; }, 60);
       }
+      
+      // تطبيق القالب على الكابشن المحسن
+      if(captionBox && tpl){
+        captionBox.style.cssText = `
+          font-family: ${tpl.fontFamily};
+          font-size: ${tpl.fontSize};
+          font-weight: ${tpl.fontWeight};
+          color: ${tpl.textColor};
+          text-align: ${tpl.align};
+          ${tpl.textShadow ? `text-shadow: ${tpl.textShadow};` : ''}
+          ${tpl.background?.enabled ? `
+            background: ${tpl.background.color};
+            padding: ${tpl.background.paddingY} ${tpl.background.paddingX};
+            border-radius: ${tpl.background.borderRadius};
+          ` : 'background: rgba(0,0,0,0.85); padding: 12px 16px; border-radius: 8px;'}
+          ${tpl.border ? `border: ${tpl.border};` : ''}
+          ${tpl.boxShadow ? `box-shadow: ${tpl.boxShadow};` : ''}
+        `;
+      }
     }
 
     function attachLocalVideo(file){
@@ -492,6 +932,10 @@
 
         if(selectedTemplate){ applyTemplateStyles(selectedTemplate); }
 
+        // إنشاء نظام الكابشن المحسن
+        loadCaptionPosition();
+        createCaptionSystem();
+
         write('تم التحويل بنجاح! شغّل الفيديو لمشاهدة الترجمة.', 'success');
         setTimeout(()=> showProgress(false), 1200);
 
@@ -528,7 +972,8 @@
 
     fitBtn.addEventListener('click', ()=>{
       // ملاءمة بسيطة: إعادة تعيين style على الفيديو
-      player.style.maxWidth='100%'; player.style.maxHeight='100%';
+      player.style.setProperty('max-width', '100%', 'important');
+      player.style.setProperty('max-height', '100%', 'important');
       write('تمت ملاءمة الفيديو داخل مساحة العمل.', 'success');
     });
 
@@ -547,6 +992,28 @@
     });
 
     searchInput.addEventListener('input', (e)=>{ renderTemplateOptions(e.target.value.trim()); });
+
+    // أحداث أزرار تحكم الكابشن
+    document.getElementById('dragModeBtn').addEventListener('click', toggleDragMode);
+    
+    document.getElementById('resetPositionBtn').addEventListener('click', ()=>{
+      resetCaptionPosition();
+    });
+    
+    document.getElementById('topPositionBtn').addEventListener('click', ()=>{
+      setCaptionPosition(50, 15); // وسط أعلى
+      write('تم نقل الكابشن إلى الأعلى', 'success');
+    });
+    
+    document.getElementById('centerPositionBtn').addEventListener('click', ()=>{
+      setCaptionPosition(50, 50); // وسط وسط
+      write('تم نقل الكابشن إلى الوسط', 'success');
+    });
+    
+    document.getElementById('bottomPositionBtn').addEventListener('click', ()=>{
+      setCaptionPosition(50, 85); // وسط أسفل
+      write('تم نقل الكابشن إلى الأسفل', 'success');
+    });
 
     // سحب وإفلات فوق اللوحة الوسطى
     const stage = document.getElementById('stage');
@@ -569,6 +1036,7 @@
     // بدء التشغيل
     window.addEventListener('DOMContentLoaded', ()=>{
       loadTemplates();
+      loadCaptionPosition(); // تحميل الموضع المحفوظ
       write('جاهز. ارفع فيديو أو اسحب ملفك إلى مساحة العمل.');
     });
   </script>
