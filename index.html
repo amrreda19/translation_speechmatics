@@ -197,12 +197,42 @@
       .btn span{display:none} /* نظف النص واحتفظ بالأيقونات فقط */
     }
 
-    /* تنسيق ::cue الافتراضي – سيتم استبداله بالقالب */
-    video::-webkit-media-text-track-display{font-family:Arial, sans-serif; font-size:18px; color:#fff}
+    /* إخفاء كابشن VTT العادي - نستخدم النظام المحسن فقط */
+    video::-webkit-media-text-track-display{
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+    }
     video::cue{
-      font-family: Arial, sans-serif;
-      font-size: 18px; color:#fff; text-shadow: 2px 2px 4px rgba(0,0,0,.8);
-      background: rgba(0,0,0,.75); padding:8px 12px; border-radius:6px;
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+    }
+    
+    /* إخفاء كابشن VTT في جميع المتصفحات */
+    video::-webkit-media-text-track-container{
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+    }
+    
+    /* إخفاء تراك الترجمة الافتراضي */
+    video::cue(0){
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+    }
+    
+    /* إخفاء جميع عناصر الترجمة */
+    video::cue(*){
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+    }
+    
+    /* إخفاء تراك الترجمة في المتصفحات الأخرى */
+    video track[kind="subtitles"]{
+      display: none !important;
     }
 
     /* نظام الكابشن المحسن */
@@ -286,44 +316,6 @@
       transform: scale(1.1);
     }
 
-    /* أزرار تحكم موضع الكابشن */
-    .caption-controls {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      display: flex;
-      gap: 8px;
-      z-index: 1001;
-    }
-
-    .caption-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid var(--border);
-      color: #cbd5e1;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      transition: all 0.2s ease;
-      backdrop-filter: blur(10px);
-    }
-
-    .caption-btn:hover {
-      background: rgba(59, 130, 246, 0.2);
-      border-color: #3b82f6;
-      color: #60a5fa;
-      transform: translateY(-2px);
-    }
-
-    .caption-btn.active {
-      background: #3b82f6;
-      color: white;
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-    }
   </style>
 </head>
 <body>
@@ -367,24 +359,6 @@
           <div class="stage" id="stage">
             <video id="player" controls crossorigin="anonymous"></video>
             
-            <!-- أزرار تحكم موضع الكابشن -->
-            <div class="caption-controls" id="captionControls" style="display: none;">
-              <button class="caption-btn" id="dragModeBtn" title="وضع السحب">
-                <i class="fa-solid fa-hand"></i>
-              </button>
-              <button class="caption-btn" id="resetPositionBtn" title="إعادة تعيين الموضع">
-                <i class="fa-solid fa-undo"></i>
-              </button>
-              <button class="caption-btn" id="topPositionBtn" title="أعلى">
-                <i class="fa-solid fa-arrow-up"></i>
-              </button>
-              <button class="caption-btn" id="centerPositionBtn" title="وسط">
-                <i class="fa-solid fa-arrows-up-down"></i>
-              </button>
-              <button class="caption-btn" id="bottomPositionBtn" title="أسفل">
-                <i class="fa-solid fa-arrow-down"></i>
-              </button>
-            </div>
           </div>
 
           <div class="statusbar">
@@ -437,7 +411,6 @@
     let vttBlobUrl = null;
     
     // حالة نظام الكابشن المحسن
-    let isDragMode = false;
     let isDragging = false;
     let dragStartX = 0;
     let dragStartY = 0;
@@ -509,8 +482,6 @@
       // إضافة الكابشن إلى المرحلة
       document.getElementById('stage').appendChild(captionContainer);
       
-      // إظهار أزرار التحكم
-      document.getElementById('captionControls').style.display = 'flex';
       
       // تحليل ملف VTT
       parseVTTFile();
@@ -615,23 +586,6 @@
       write('تم إعادة تعيين موضع الكابشن إلى الوسط السفلي', 'success');
     }
     
-    function toggleDragMode() {
-      isDragMode = !isDragMode;
-      const btn = document.getElementById('dragModeBtn');
-      btn.classList.toggle('active', isDragMode);
-      
-      if (isDragMode) {
-        write('وضع السحب مفعل - يمكنك الآن سحب الكابشن', 'success');
-        if (captionBox) {
-          captionBox.classList.add('drag-mode');
-        }
-      } else {
-        write('وضع السحب معطل - الكابشن قابل للسحب دائماً', 'info');
-        if (captionBox) {
-          captionBox.classList.remove('drag-mode');
-        }
-      }
-    }
     
     // دالة تحليل ملف VTT
     function parseVTTFile() {
@@ -813,52 +767,8 @@
 
     function applyTemplateStyles(tpl){
       if(!tpl) return;
-      // إزالة ستايل قديم
-      const styleId = 'caption-template-styles';
-      document.getElementById(styleId)?.remove();
-
-      const style = document.createElement('style');
-      style.id = styleId;
-      let css = `
-        video::cue{
-          font-family:${tpl.fontFamily} !important;
-          font-size:${tpl.fontSize} !important;
-          font-weight:${tpl.fontWeight} !important;
-          color:${tpl.textColor} !important;
-          text-align:${tpl.align} !important;
-          ${tpl.textShadow ? `text-shadow:${tpl.textShadow} !important;` : ''}
-          max-width:92% !important;
-          display:inline-block !important;
-          border-radius:6px !important;
-        }`;
-      if(tpl.background?.enabled){
-        css += `
-        video::cue{
-          background:${tpl.background.color} !important;
-          padding:${tpl.background.paddingY} ${tpl.background.paddingX} !important;
-          border-radius:${tpl.background.borderRadius} !important;
-        }`;
-      }
-      if(tpl.border){ css += `video::cue{border:${tpl.border} !important;}`; }
-      if(tpl.boxShadow){ css += `video::cue{box-shadow:${tpl.boxShadow} !important;}`; }
-
-      if(tpl.animation && templates.animations?.[tpl.animation]){
-        const anim = templates.animations[tpl.animation];
-        css += anim.keyframes + `
-          video::cue{ animation:${tpl.animation} ${anim.duration} ${anim.timingFunction} !important; }`;
-      }
-
-      style.textContent = css;
-      document.head.appendChild(style);
-
-      // إعادة تحميل التراك لتطبيق التأثير
-      if(currentTrack){
-        const src = currentTrack.src;
-        currentTrack.src = '';
-        setTimeout(()=>{ currentTrack.src = src; }, 60);
-      }
       
-      // تطبيق القالب على الكابشن المحسن
+      // تطبيق القالب على الكابشن المحسن فقط
       if(captionBox && tpl){
         captionBox.style.cssText = `
           font-family: ${tpl.fontFamily};
@@ -875,6 +785,8 @@
           ${tpl.border ? `border: ${tpl.border};` : ''}
           ${tpl.boxShadow ? `box-shadow: ${tpl.boxShadow};` : ''}
         `;
+        
+        write(`تم تطبيق القالب: ${tpl.name}`, 'success');
       }
     }
 
@@ -925,7 +837,7 @@
         track.kind = 'subtitles';
         track.label = 'العربية';
         track.srclang = 'ar';
-        track.default = true;
+        track.default = false; // تعطيل العرض التلقائي
         track.src = vttBlobUrl;
         player.appendChild(track);
         currentTrack = track;
@@ -993,27 +905,6 @@
 
     searchInput.addEventListener('input', (e)=>{ renderTemplateOptions(e.target.value.trim()); });
 
-    // أحداث أزرار تحكم الكابشن
-    document.getElementById('dragModeBtn').addEventListener('click', toggleDragMode);
-    
-    document.getElementById('resetPositionBtn').addEventListener('click', ()=>{
-      resetCaptionPosition();
-    });
-    
-    document.getElementById('topPositionBtn').addEventListener('click', ()=>{
-      setCaptionPosition(50, 15); // وسط أعلى
-      write('تم نقل الكابشن إلى الأعلى', 'success');
-    });
-    
-    document.getElementById('centerPositionBtn').addEventListener('click', ()=>{
-      setCaptionPosition(50, 50); // وسط وسط
-      write('تم نقل الكابشن إلى الوسط', 'success');
-    });
-    
-    document.getElementById('bottomPositionBtn').addEventListener('click', ()=>{
-      setCaptionPosition(50, 85); // وسط أسفل
-      write('تم نقل الكابشن إلى الأسفل', 'success');
-    });
 
     // سحب وإفلات فوق اللوحة الوسطى
     const stage = document.getElementById('stage');
