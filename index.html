@@ -1125,26 +1125,15 @@
         // النقر على العنصر للانتقال للوقت
         item.addEventListener('click', (e) => {
           if (!txt.matches(':focus')) {
-            // تحديث فوري فوري للنص قبل استدعاء selectCue
-            if (captionBox && vttCues[c.idx]) {
-              (function(__el,__v){var __t=__el&&__el.querySelector?__el.querySelector('.caption-text'):null; if(__t){__t.textContent=__v;}})(captionBox, vttCues[c.idx].text);
-              captionContainer.style.display = 'block';
-            }
             
-            selectCue(c.idx, false); // تغيير إلى false للانتقال للوقت بدون تشغيل
+            selectCue(c.idx, false); // الانتقال للوقت بدون تشغيل
           }
         });
 
         // النقر على النص نفسه للانتقال للوقت
         txt.addEventListener('click', (e) => {
           e.stopPropagation();
-          
-          // تحديث فوري فوري للنص قبل استدعاء selectCue
-          if (captionBox && vttCues[c.idx]) {
-            (function(__el,__v){var __t=__el&&__el.querySelector?__el.querySelector('.caption-text'):null; if(__t){__t.textContent=__v;}})(captionBox, vttCues[c.idx].text);
-            captionContainer.style.display = 'block';
-          }
-          
+
           selectCue(c.idx, false); // الانتقال للوقت بدون تشغيل
         });
 
@@ -1182,32 +1171,22 @@
         selectedItem.scrollIntoView({block: 'nearest', behavior: 'smooth'});
       }
       
-      // تحديث النص الظاهر على الفيديو فورًا (دائماً) - قبل الانتقال للوقت
-      if (captionBox && vttCues[idx]) {
-        (function(__el,__v){var __t=__el&&__el.querySelector?__el.querySelector('.caption-text'):null; if(__t){__t.textContent=__v;}})(captionBox, vttCues[idx].text);
-        captionContainer.style.display = 'block';
-        currentCaptionText = vttCues[idx].text; // تحديث المتغير للمقارنة
-      }
+      // لا نغيّر النص هنا؛ نتركه لإدارة المزامنة الزمنية forceUpdateCaption
       
       // الانتقال للوقت المحدد
       if (vttCues[idx] && player) {
-        const targetTime = vttCues[idx].start;
-        
-        // تحديث فوري للنص قبل تغيير الوقت
-        if (captionBox) {
-          (function(__el,__v){var __t=__el&&__el.querySelector?__el.querySelector('.caption-text'):null; if(__t){__t.textContent=__v;}})(captionBox, vttCues[idx].text);
-          captionContainer.style.display = 'block';
-        }
+        const cue = vttCues[idx];
+        const epsilonEnter = 0.08; // إزاحة دخول بسيطة داخل المدى
+        const epsilonLeave = 0.01; // هامش خروج من نهاية الجملة
+        const duration = Math.max(0, cue.end - cue.start);
+        const candidateEnter = cue.start + Math.min(epsilonEnter, duration * 0.6);
+        const candidateLeave = cue.end - epsilonLeave;
+        let targetTime = Math.min(candidateLeave, candidateEnter);
+        targetTime = Math.max(cue.start + 0.001, Math.min(targetTime, cue.end - 0.001));
         
         player.currentTime = targetTime;
-        
-        // تحديث فوري إضافي بعد تغيير الوقت
-        setTimeout(() => {
-          if (captionBox && vttCues[idx]) {
-            (function(__el,__v){var __t=__el&&__el.querySelector?__el.querySelector('.caption-text'):null; if(__t){__t.textContent=__v;}})(captionBox, vttCues[idx].text);
-            captionContainer.style.display = 'block';
-          }
-        }, 50); // تأخير قصير جداً لضمان التحديث
+        // مزامنة العرض بدقة مع الوقت الحالي بعد القفز
+        setTimeout(() => { try { forceUpdateCaption(); } catch(e){} }, 0);
         
         if (seek) {
           // تشغيل الفيديو إذا كان متوقفاً
@@ -1415,7 +1394,7 @@
       // البحث عن النص المناسب للوقت الحالي
       for (let i = 0; i < vttCues.length; i++) {
         const cue = vttCues[i];
-        if (currentTime >= cue.start && currentTime <= cue.end) {
+        if (currentTime >= cue.start && currentTime < cue.end) { // تفضيل الجملة التالية عند الحدود
           activeIdx = i;
           break;
         }
@@ -1443,7 +1422,7 @@
       // البحث عن النص المناسب للوقت الحالي
       for (let i = 0; i < vttCues.length; i++) {
         const cue = vttCues[i];
-        if (currentTime >= cue.start && currentTime <= cue.end) {
+        if (currentTime >= cue.start && currentTime < cue.end) { // تفضيل الجملة التالية عند الحدود
           activeIdx = i;
           break;
         }
