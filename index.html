@@ -150,6 +150,38 @@
       border-inline-start:1px solid var(--border);
       background:linear-gradient(180deg,#0a0f1a,#0b1120);
       display:flex; flex-direction:column; height:100%;
+      overflow:hidden;
+    }
+    
+    /* شريط تمرير للشريط الجانبي */
+    .sidebar::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .sidebar::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.2);
+      border-radius: 8px;
+    }
+    
+    .sidebar::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #22c55e, #16a34a);
+      border-radius: 8px;
+      border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+    
+    .sidebar::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #4ade80, #22c55e);
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
+    }
+    
+    .sidebar::-webkit-scrollbar-thumb:active {
+      background: linear-gradient(180deg, #16a34a, #15803d);
+    }
+    
+    /* دعم Firefox للشريط الجانبي */
+    .sidebar {
+      scrollbar-width: thin;
+      scrollbar-color: #22c55e rgba(15, 23, 42, 0.2);
     }
     .side-head{
       display:flex; align-items:center; justify-content:space-between; gap:12px;
@@ -203,7 +235,44 @@
     .editor-search{padding:8px 12px; border-bottom:1px solid var(--border)}
     .editor-search .search{border-color:#233052}
     .cue-list{
-      overflow:auto; padding:8px 12px; display:flex; flex-direction:column; gap:8px;
+      overflow:auto; 
+      padding:8px 12px; 
+      display:flex; 
+      flex-direction:column; 
+      gap:8px;
+      height: calc(100vh - 200px);
+      max-height: calc(100vh - 200px);
+    }
+    
+    /* شريط تمرير مخصص للجمل */
+    .cue-list::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .cue-list::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.3);
+      border-radius: 10px;
+    }
+    
+    .cue-list::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #3b82f6, #1e40af);
+      border-radius: 10px;
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+    
+    .cue-list::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #60a5fa, #3b82f6);
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+    }
+    
+    .cue-list::-webkit-scrollbar-thumb:active {
+      background: linear-gradient(180deg, #2563eb, #1e40af);
+    }
+    
+    /* دعم Firefox */
+    .cue-list {
+      scrollbar-width: thin;
+      scrollbar-color: #3b82f6 rgba(15, 23, 42, 0.3);
     }
     .cue-item{
       border:1px solid var(--border); border-radius:10px; padding:10px; background:#0b1324; cursor:pointer;
@@ -379,8 +448,6 @@
   .handle.ne{right:-8px; top:-8px; cursor:nesw-resize}
   .handle.sw{left:-8px; bottom:-8px; cursor:nesw-resize}
   .handle.se{right:-8px; bottom:-8px; cursor:nwse-resize}
-  .handle.n{top:-8px; left:50%; transform:translateX(-50%); cursor:ns-resize}
-  .handle.s{bottom:-8px; left:50%; transform:translateX(-50%); cursor:ns-resize}
   .handle.w{left:-8px; top:50%; transform:translateY(-50%); cursor:ew-resize; width:8px; height:24px; border-radius:4px}
   .handle.e{right:-8px; top:50%; transform:translateY(-50%); cursor:ew-resize; width:8px; height:24px; border-radius:4px}
 
@@ -413,10 +480,6 @@
 
       <div class="top-actions">
         <button id="newProject" class="btn" title="مشروع جديد"><i class="fa-regular fa-file"></i><span>جديد</span></button>
-        <label class="btn" title="اختر فيديو">
-          <i class="fa-solid fa-upload"></i><span>رفع فيديو</span>
-          <input id="file" type="file" accept="video/*" hidden />
-        </label>
         <button id="applyTemplateBtn" class="btn" title="تطبيق القالب" disabled><i class="fa-solid fa-paintbrush"></i><span>تطبيق القالب</span></button>
         <button id="exportBtn" class="btn primary" title="تصدير"><i class="fa-solid fa-download"></i><span>تصدير</span></button>
       </div>
@@ -457,19 +520,18 @@
       <aside class="sidebar">
         <div class="side-head">
           <!-- تبويبات -->
-          <div class="side-tabs">
+          <div class="side-tabs" id="sideTabs" style="display:none">
             <button id="tabTemplates" class="tab active" title="القوالب"><i class="fa-solid fa-shapes"></i> القوالب</button>
             <button id="tabEditor" class="tab" title="تحرير النصوص"><i class="fa-solid fa-pen"></i> تحرير النصوص</button>
           </div>
 
           <!-- أدوات القوالب (تظل موجودة) -->
-          <div class="search" id="templatesSearchWrap"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" placeholder="ابحث في القوالب…"></div>
-          <button id="refreshTpl" class="btn" title="إعادة تحميل القوالب"><i class="fa-solid fa-rotate-right"></i></button>
+          <div class="search" id="templatesSearchWrap" style="display:none"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" placeholder="ابحث في القوالب…"></div>
+          <button id="refreshTpl" class="btn" title="إعادة تحميل القوالب" style="display:none"><i class="fa-solid fa-rotate-right"></i></button>
 
           <!-- شريط أدوات التحرير (يظهر فقط في تبويب التحرير) -->
           <div class="editor-toolbar" id="editorToolbar" style="display:none; width:100%">
             <button id="addCueBtn" class="btn success" title="إضافة جملة جديدة"><i class="fa-solid fa-plus"></i><span>إضافة</span></button>
-            <button id="toggleVerticalBtn" class="btn" title="تبديل العرض عمودي/أفقي"><i class="fa-solid fa-arrows-up-down"></i><span>عرض عمودي</span></button>
             <button id="jumpPrev" class="btn" title="السابق"><i class="fa-solid fa-arrow-right"></i></button>
             <button id="jumpNext" class="btn" title="التالي"><i class="fa-solid fa-arrow-left"></i></button>
           </div>
@@ -479,14 +541,32 @@
         </div>
 
         <!-- لوح القوالب -->
-        <div class="templates" id="templateOptions">
+        <div class="templates" id="templateOptions" style="display:none">
           <!-- يتم البناء برمجياً -->
         </div>
 
         <!-- لوح تحرير النصوص -->
-        <div class="editor-panel" id="editorPanel">
+        <div class="editor-panel" id="editorPanel" style="display:none">
           <div class="cue-list" id="cueList">
             <!-- يتم البناء برمجياً -->
+          </div>
+        </div>
+
+        <!-- رسالة ترحيبية قبل رفع الفيديو -->
+        <div id="welcomeMessage" style="padding: 20px; text-align: center; color: #94a3b8;">
+          <i class="fa-solid fa-video" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+          <h3 style="margin-bottom: 12px; color: #e5e7eb;">مرحباً بك في مولد الترجمة</h3>
+          <p style="line-height: 1.6; margin-bottom: 16px;">ارفع فيديو لبدء إنشاء الترجمة التلقائية</p>
+          
+          <label class="btn primary" title="اختر فيديو" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 10px; font-weight: 600; border: 1px solid transparent; background: linear-gradient(135deg,#3b82f6,#1e40af); color: #e5e7eb; cursor: pointer; transition: .18s ease; margin-bottom: 16px;">
+            <i class="fa-solid fa-upload"></i>
+            <span>رفع فيديو</span>
+            <input id="file" type="file" accept="video/*" hidden />
+          </label>
+          
+          <div style="background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid #1f2a44;">
+            <i class="fa-solid fa-hand-pointer" style="margin-left: 8px;"></i>
+            <span>أو اسحب ملف الفيديو إلى مساحة العمل</span>
           </div>
         </div>
 
@@ -520,7 +600,6 @@
     const templatesSearchWrap = document.getElementById('templatesSearchWrap');
     const editorToolbar = document.getElementById('editorToolbar');
     const editorSearch = document.getElementById('editorSearch');
-    const toggleVerticalBtn = document.getElementById('toggleVerticalBtn');
     const cueListEl = document.getElementById('cueList');
     const cueSearchInput = document.getElementById('cueSearchInput');
     const jumpPrevBtn = document.getElementById('jumpPrev');
@@ -543,7 +622,6 @@
     let currentCaptionText = '';
     let vttCues = [];
     let currentCueIndex = -1;
-    let verticalMode = false; // لوضع العرض العمودي
 
     // أدوات مساعدة
     function write(msg, type='info'){
@@ -589,7 +667,7 @@
       resizeHandles.className = 'resize-handles';
       resizeHandles.setAttribute('aria-hidden', 'true');
 
-      const handleDirections = ['nw', 'ne', 'e', 'se', 'sw', 'w', 'n', 's'];
+      const handleDirections = ['nw', 'ne', 'e', 'se', 'sw', 'w'];
       handleDirections.forEach(dir => {
         const handle = document.createElement('div');
         handle.className = `handle ${dir}`;
@@ -666,8 +744,7 @@
           const state = {
             pos: captionPosition,
             widthPc: widthPc,
-            fontPx: fontPx,
-            verticalMode: verticalMode
+            fontPx: fontPx
           };
           localStorage.setItem('captionState', JSON.stringify(state));
         } catch (e) {}
@@ -682,11 +759,6 @@
             if (state.pos) captionPosition = state.pos;
             if (state.widthPc) widthPc = state.widthPc;
             if (state.fontPx) fontPx = state.fontPx;
-            if (typeof state.verticalMode === 'boolean') {
-              verticalMode = state.verticalMode;
-              captionBox.classList.toggle('vertical-text', verticalMode);
-              toggleVerticalBtn?.querySelector('span') && (toggleVerticalBtn.querySelector('span').textContent = verticalMode ? 'عرض أفقي' : 'عرض عمودي');
-            }
           }
         } catch (e) {}
       }
@@ -1010,6 +1082,7 @@
         playBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           selectCue(c.idx, true); // الانتقال مع التشغيل
+          write(`تشغيل الجملة ${c.idx + 1} في الوقت ${s2ts(c.start)}`, 'success');
         });
 
         const deleteBtn = document.createElement('button');
@@ -1052,14 +1125,27 @@
         // النقر على العنصر للانتقال للوقت
         item.addEventListener('click', (e) => {
           if (!txt.matches(':focus')) {
-            selectCue(c.idx, false); // تغيير من true إلى false لمنع التشغيل التلقائي
+            // تحديث فوري فوري للنص قبل استدعاء selectCue
+            if (captionBox && vttCues[c.idx]) {
+              (function(__el,__v){var __t=__el&&__el.querySelector?__el.querySelector('.caption-text'):null; if(__t){__t.textContent=__v;}})(captionBox, vttCues[c.idx].text);
+              captionContainer.style.display = 'block';
+            }
+            
+            selectCue(c.idx, false); // تغيير إلى false للانتقال للوقت بدون تشغيل
           }
         });
 
-        // النقر على النص نفسه لإظهاره في الفيديو
+        // النقر على النص نفسه للانتقال للوقت
         txt.addEventListener('click', (e) => {
           e.stopPropagation();
-          selectCue(c.idx, false); // إظهار النص فقط بدون الانتقال للوقت
+          
+          // تحديث فوري فوري للنص قبل استدعاء selectCue
+          if (captionBox && vttCues[c.idx]) {
+            (function(__el,__v){var __t=__el&&__el.querySelector?__el.querySelector('.caption-text'):null; if(__t){__t.textContent=__v;}})(captionBox, vttCues[c.idx].text);
+            captionContainer.style.display = 'block';
+          }
+          
+          selectCue(c.idx, false); // الانتقال للوقت بدون تشغيل
         });
 
         cueListEl.appendChild(item);
@@ -1080,6 +1166,8 @@
     }
 
     function selectCue(idx, seek=false) {
+      if (idx < 0 || idx >= vttCues.length) return;
+      
       currentCueIndex = idx;
       highlightActiveCue(idx);
       
@@ -1090,18 +1178,64 @@
       const selectedItem = cueListEl.querySelector(`.cue-item[data-idx="${idx}"]`);
       if (selectedItem) {
         selectedItem.classList.add('selected');
+        // تمرير إلى العنصر المحدد في القائمة
+        selectedItem.scrollIntoView({block: 'nearest', behavior: 'smooth'});
       }
       
-      // تحديث النص الظاهر على الفيديو فورًا (دائماً)
+      // تحديث النص الظاهر على الفيديو فورًا (دائماً) - قبل الانتقال للوقت
       if (captionBox && vttCues[idx]) {
         (function(__el,__v){var __t=__el&&__el.querySelector?__el.querySelector('.caption-text'):null; if(__t){__t.textContent=__v;}})(captionBox, vttCues[idx].text);
         captionContainer.style.display = 'block';
         currentCaptionText = vttCues[idx].text; // تحديث المتغير للمقارنة
       }
       
-      if (seek && vttCues[idx]) {
-        player.currentTime = vttCues[idx].start + 0.01;
-        if (player.paused) player.play();
+      // الانتقال للوقت المحدد
+      if (vttCues[idx] && player) {
+        const targetTime = vttCues[idx].start;
+        
+        // تحديث فوري للنص قبل تغيير الوقت
+        if (captionBox) {
+          (function(__el,__v){var __t=__el&&__el.querySelector?__el.querySelector('.caption-text'):null; if(__t){__t.textContent=__v;}})(captionBox, vttCues[idx].text);
+          captionContainer.style.display = 'block';
+        }
+        
+        player.currentTime = targetTime;
+        
+        // تحديث فوري إضافي بعد تغيير الوقت
+        setTimeout(() => {
+          if (captionBox && vttCues[idx]) {
+            (function(__el,__v){var __t=__el&&__el.querySelector?__el.querySelector('.caption-text'):null; if(__t){__t.textContent=__v;}})(captionBox, vttCues[idx].text);
+            captionContainer.style.display = 'block';
+          }
+        }, 50); // تأخير قصير جداً لضمان التحديث
+        
+        if (seek) {
+          // تشغيل الفيديو إذا كان متوقفاً
+          if (player.paused) {
+            player.play().catch(e => console.log('لا يمكن تشغيل الفيديو:', e));
+          }
+          
+          // تحديث أيقونة التشغيل
+          const playPauseBtn = document.getElementById('playPause');
+          if (playPauseBtn) {
+            playPauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+          }
+          
+          write(`انتقل إلى الوقت: ${s2ts(targetTime)}`, 'success');
+        } else {
+          // إيقاف الفيديو عند النقر على النص
+          if (!player.paused) {
+            player.pause();
+          }
+          
+          // تحديث أيقونة التشغيل
+          const playPauseBtn = document.getElementById('playPause');
+          if (playPauseBtn) {
+            playPauseBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+          }
+          
+          write(`انتقل إلى الوقت: ${s2ts(targetTime)} (متوقف)`, 'info');
+        }
       }
     }
 
@@ -1440,7 +1574,6 @@
           touch-action: none;
           position: relative;
           pointer-events: auto;
-          ${verticalMode ? 'writing-mode: vertical-rl; text-orientation: upright; line-height:1.2;' : ''}
         `;
 
         write(`تم تطبيق القالب: ${tpl.name}`, 'success');
@@ -1568,6 +1701,10 @@
 
     // 🔴 تبويبات: القوالب / التحرير
     function switchToTemplatesTab(){
+      // إظهار التبويبات بعد رفع الفيديو
+      document.getElementById('sideTabs').style.display = 'flex';
+      document.getElementById('welcomeMessage').style.display = 'none';
+      
       tabTemplates.classList.add('active');
       tabEditor.classList.remove('active');
       templateOptions.style.display = 'grid';
@@ -1578,6 +1715,10 @@
       editorSearch.style.display = 'none';
     }
     function switchToEditorTab(){
+      // إظهار التبويبات بعد رفع الفيديو
+      document.getElementById('sideTabs').style.display = 'flex';
+      document.getElementById('welcomeMessage').style.display = 'none';
+      
       tabEditor.classList.add('active');
       tabTemplates.classList.remove('active');
       templateOptions.style.display = 'none';
@@ -1590,20 +1731,6 @@
     tabTemplates.addEventListener('click', switchToTemplatesTab);
     tabEditor.addEventListener('click', switchToEditorTab);
 
-    // 🔴 تبديل العرض عمودي/أفقي
-    toggleVerticalBtn.addEventListener('click', ()=>{
-      verticalMode = !verticalMode;
-      if (captionBox) {
-        captionBox.classList.toggle('vertical-text', verticalMode);
-      }
-      toggleVerticalBtn.querySelector('span').textContent = verticalMode ? 'عرض أفقي' : 'عرض عمودي';
-      // حفظ الحالة
-      try{
-        const saved = JSON.parse(localStorage.getItem('captionState')||'{}');
-        saved.verticalMode = verticalMode;
-        localStorage.setItem('captionState', JSON.stringify(saved));
-      }catch(e){}
-    });
 
     // 🔴 بحث داخل الجمل
     cueSearchInput.addEventListener('input', (e)=>{
@@ -1613,13 +1740,15 @@
     // 🔴 تنقّل سريع بين الجمل
     jumpPrevBtn.addEventListener('click', ()=>{
       if (!vttCues.length) return;
-      const idx = Math.max(0, (currentCueIndex>0? currentCueIndex-1 : 0));
+      const idx = Math.max(0, (currentCueIndex > 0 ? currentCueIndex - 1 : 0));
       selectCue(idx, true);
+      write(`انتقل إلى الجملة ${idx + 1} من ${vttCues.length}`, 'info');
     });
     jumpNextBtn.addEventListener('click', ()=>{
       if (!vttCues.length) return;
-      const idx = Math.min(vttCues.length-1, (currentCueIndex>=0? currentCueIndex+1 : 0));
+      const idx = Math.min(vttCues.length - 1, (currentCueIndex >= 0 ? currentCueIndex + 1 : 0));
       selectCue(idx, true);
+      write(`انتقل إلى الجملة ${idx + 1} من ${vttCues.length}`, 'info');
     });
 
     // زر إضافة جملة جديدة
