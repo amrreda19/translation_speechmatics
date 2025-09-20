@@ -1059,17 +1059,7 @@
         // النقر على النص نفسه لإظهاره في الفيديو
         txt.addEventListener('click', (e) => {
           e.stopPropagation();
-          if (!txt.matches(':focus')) {
-            selectCue(c.idx, false); // إظهار النص فقط بدون الانتقال للوقت
-            
-            // إظهار مربعات التكبير والتصغير عند النقر على النص
-            if (captionContainer && captionBox) {
-              captionContainer.classList.add('show-handles');
-              setTimeout(() => {
-                captionContainer.classList.remove('show-handles');
-              }, 3000); // إخفاء بعد 3 ثوان
-            }
-          }
+          selectCue(c.idx, false); // إظهار النص فقط بدون الانتقال للوقت
         });
 
         cueListEl.appendChild(item);
