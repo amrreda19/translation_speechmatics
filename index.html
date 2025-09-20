@@ -1127,8 +1127,7 @@
           txt.setAttribute('data-original', newText.trim());
         }
         
-        // فرض تحديث الكابشن
-        setTimeout(() => forceUpdateCaption(), 100);
+        // لا نحتاج forceUpdateCaption هنا لأننا نريد إظهار النص المحرر
         
         write(`تم حفظ تعديل الجملة ${idx + 1}`, 'success');
       }
