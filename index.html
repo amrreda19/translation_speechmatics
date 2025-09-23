@@ -362,8 +362,10 @@
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
       border: 2px solid transparent;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      max-width: 90%;
-      word-wrap: break-word;
+      width: auto;
+      min-width: 200px;
+      max-width: 95%;
+      white-space: nowrap;
       line-height: 1.4;
       pointer-events: auto;
       cursor: move;
@@ -416,9 +418,13 @@
     box-shadow:0 10px 28px rgba(0,0,0,.45);
     text-shadow:0 1px 2px rgba(0,0,0,.6);
     cursor:grab; user-select:none; touch-action:none;
+    width: auto;
+    min-width: 200px;
+    max-width: 95%;
+    white-space: nowrap;
   }
   .caption-box:active{cursor:grabbing}
-  .caption-text{display:inline-block; max-width:100%; word-wrap:break-word}
+  .caption-text{display:inline-block; max-width:100%; white-space: nowrap;}
 
   /* Professional resize handles */
   .resize-handles{position:absolute; inset:0; pointer-events:auto; z-index: 1002}
