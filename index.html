@@ -360,8 +360,8 @@
       min-width: 200px;
       max-width: 95%;
       white-space: normal;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
+      overflow-wrap: anywhere;
+      word-break: break-word;
       line-height: 1.4;
       pointer-events: auto;
       cursor: move;
@@ -939,14 +939,14 @@
               nextW = Math.max(20, Math.min(95, w0 + dPct));
             }
             
-            // تغيير الحجم (الأعلى والأسفل) - يؤثر على كل من العرض والخط
+            // تغيير حجم الخط فقط (الأعلى والأسفل) - بدون تغيير العرض
             if (dir.includes('n') || dir.includes('s')) {
               const sign = dir.includes('s') ? 1 : -1;
               const dScale = 1 + (sign * dy) / 320;
               const newFont = Math.max(12, Math.min(60, f0 * dScale));
-              const newWidth = Math.max(20, Math.min(95, w0 * dScale));
               nextF = newFont;
-              nextW = newWidth;
+              // لا نغير العرض - نتركه كما هو
+              nextW = widthPc;
             }
             
             // تطبيق التغييرات فوراً
@@ -1563,14 +1563,14 @@
               nextW = Math.max(20, Math.min(95, w0 + dPct));
             }
             
-            // تغيير الحجم (الأعلى والأسفل) - يؤثر على كل من العرض والخط
+            // تغيير حجم الخط فقط (الأعلى والأسفل) - بدون تغيير العرض
             if (dir.includes('n') || dir.includes('s')) {
               const sign = dir.includes('s') ? 1 : -1;
               const dScale = 1 + (sign * dy) / 320;
               const newFont = Math.max(12, Math.min(60, f0 * dScale));
-              const newWidth = Math.max(20, Math.min(95, w0 * dScale));
               nextF = newFont;
-              nextW = newWidth;
+              // لا نغير العرض - نتركه كما هو
+              nextW = widthPc;
             }
             
             // تطبيق التغييرات فوراً
@@ -1748,17 +1748,16 @@
 
       // تطبيق القالب على الكابشن المحسن فقط
       if(captionBox && tpl){
-        // الحفاظ على الخصائص الأساسية للتحكم
-        const currentWidth = captionBox.style.width || '60%';
-        const currentFontSize = captionBox.style.fontSize || '20px';
-
         captionBox.style.cssText = `
           font-family: ${tpl.fontFamily};
           font-size: ${tpl.fontSize};
           font-weight: ${tpl.fontWeight};
           color: ${tpl.textColor};
           text-align: ${tpl.align};
-          width: ${currentWidth};
+          width: 100%;
+          white-space: normal;
+          overflow-wrap: anywhere;
+          word-break: break-word;
           ${tpl.textShadow ? `text-shadow: ${tpl.textShadow};` : ''}
           ${tpl.background?.enabled ? `
             background: ${tpl.background.color};
@@ -1802,7 +1801,11 @@
         clearInterval(iv); updateProgress(100);
 
         if(!resp.ok){
-          write(`خطأ: ${data.error || 'unknown'}`, 'error');
+          const detailsStr = data?.details ? (typeof data.details === 'string' ? data.details : JSON.stringify(data.details)) : '';
+          const statusStr = data?.status ? ` (HTTP ${data.status})` : '';
+          const message = `${data?.error || 'unknown'}${statusStr}${detailsStr ? ' - ' + detailsStr : ''}`;
+          console.error('Transcribe error response:', data);
+          write(`خطأ: ${message}`, 'error');
           showProgress(false);
           return;
         }

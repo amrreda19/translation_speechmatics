@@ -156,7 +156,10 @@ app.get('/', (req, res) => {
 app.post('/api/transcribe', upload.single('video'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No video file provided (field name must be "video")' });
+      return res.status(400).json({ 
+        error: 'No video file provided (field name must be "video")',
+        message_ar: 'لم يتم إرسال ملف فيديو. تأكد أن اسم الحقل هو video.'
+      });
     }
 
     // 1) إنشاء Job مع رفع الملف
@@ -197,7 +200,11 @@ app.post('/api/transcribe', upload.single('video'), async (req, res) => {
       status = st.data.job?.status || st.data.status || 'running';
 
       if (status === 'failed') {
-        return res.status(500).json({ error: 'Speechmatics job failed', details: st.data });
+        return res.status(500).json({ 
+          error: 'Speechmatics job failed', 
+          details: st.data,
+          message_ar: 'فشل تنفيذ مهمة التفريغ لدى Speechmatics. تحقق من نوع الملف والاشتراك.'
+        });
       }
     }
 
@@ -220,10 +227,23 @@ app.post('/api/transcribe', upload.single('video'), async (req, res) => {
   } catch (err) {
     const status = err.response?.status;
     const data = err.response?.data;
+    let message_ar = 'حدث خطأ أثناء التفريغ.';
+    if(status === 401 || status === 403){
+      message_ar = 'اعتماد API غير صالح. تحقق من SPEECHMATICS_API_KEY.';
+    }else if(status === 400){
+      message_ar = 'طلب غير صالح، ربما نوع الملف أو الإعدادات خاطئة.';
+    }else if(status === 413){
+      message_ar = 'حجم الملف كبير جدًا.';
+    }else if(status === 429){
+      message_ar = 'تم تجاوز حد الطلبات. حاول لاحقًا.';
+    }else if(status === 504){
+      message_ar = 'انتهت مهلة التفريغ.';
+    }
     return res.status(status || 500).json({
       error: 'Failed to transcribe',
       status,
-      details: data || err.message
+      details: data || err.message,
+      message_ar
     });
   }
 });
