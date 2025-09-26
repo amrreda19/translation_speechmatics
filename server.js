@@ -143,7 +143,12 @@ function convertSrtToVtt(srtText) {
 
 // Route للصفحة الرئيسية
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'views', 'index.html'));
+});
+
+// Route لصفحة الهبوط
+app.get('/home', (req, res) => {
+  res.sendFile(path.join(__dirname, 'views', 'home.html'));
 });
 
 /**

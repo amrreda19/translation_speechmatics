@@ -1,0 +1,123 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>🎬 مولد الترجمة التلقائية – نمط كانفا</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+  <link href="public/css/styles.css" rel="stylesheet">
+  <script src="public/js/script.js"></script>
+
+
+</head>
+<body>
+  <div class="app">
+    <!-- الشريط العلوي -->
+    <header class="topbar">
+      <div class="brand" title="مولد الترجمة">
+        <i class="fa-solid fa-clapperboard"></i>
+        <span>مولد الترجمة – نمط كانفا</span>
+      </div>
+
+      <div class="top-actions">
+        <button id="newProject" class="btn" title="مشروع جديد"><i class="fa-regular fa-file"></i><span>جديد</span></button>
+        <button id="applyTemplateBtn" class="btn" title="تطبيق القالب" disabled><i class="fa-solid fa-paintbrush"></i><span>تطبيق القالب</span></button>
+        <button id="exportBtn" class="btn primary" title="تصدير"><i class="fa-solid fa-download"></i><span>تصدير</span></button>
+      </div>
+    </header>
+
+    <!-- منطقة العمل -->
+    <main class="workspace">
+      <!-- أدوات يسار (سريعة) -->
+      <aside class="tools">
+        <label class="tool" title="رفع فيديو">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <input id="file2" type="file" accept="video/*" />
+        </label>
+        <button class="tool" id="playPause" title="تشغيل/إيقاف"><i class="fa-solid fa-play"></i></button>
+        <button class="tool" id="fit" title="ملاءمة للشاشة"><i class="fa-solid fa-expand"></i></button>
+        <button class="tool" id="mute" title="كتم"><i class="fa-solid fa-volume-xmark"></i></button>
+      </aside>
+
+      <!-- اللوحة الوسطى (الفيديو) -->
+      <section class="canvas">
+        <div class="stage-wrap">
+          <div class="checker"></div>
+
+          <div class="stage" id="stage">
+            <div class="video-wrap small" id="videoWrap">
+              <video id="player" controls crossorigin="anonymous"></video>
+            </div>
+          </div>
+
+          <div class="statusbar">
+            <div id="statusTxt"><i class="fa-regular fa-circle-info"></i> اختر فيديو وابدأ التحويل…</div>
+            <div class="progress" id="progressBar" style="display:none">
+              <div class="fill" id="progressFill"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- الشريط الجانبي (قوالب / تحرير) -->
+      <aside class="sidebar">
+        <div class="side-head">
+          <!-- تبويبات -->
+          <div class="side-tabs" id="sideTabs" style="display:none">
+            <button id="tabTemplates" class="tab active" title="القوالب"><i class="fa-solid fa-shapes"></i> القوالب</button>
+            <button id="tabEditor" class="tab" title="تحرير النصوص"><i class="fa-solid fa-pen"></i> تحرير النصوص</button>
+          </div>
+
+          <!-- أدوات القوالب (تظل موجودة) -->
+          <div class="search" id="templatesSearchWrap" style="display:none"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" placeholder="ابحث في القوالب…"></div>
+          <button id="refreshTpl" class="btn" title="إعادة تحميل القوالب" style="display:none"><i class="fa-solid fa-rotate-right"></i></button>
+
+          <!-- شريط أدوات التحرير (يظهر فقط في تبويب التحرير) -->
+          <div class="editor-toolbar" id="editorToolbar" style="display:none; width:100%">
+            <button id="addCueBtn" class="btn success" title="إضافة جملة جديدة"><i class="fa-solid fa-plus"></i><span>إضافة</span></button>
+            <button id="jumpPrev" class="btn" title="السابق"><i class="fa-solid fa-arrow-right"></i></button>
+            <button id="jumpNext" class="btn" title="التالي"><i class="fa-solid fa-arrow-left"></i></button>
+          </div>
+          <div class="editor-search" id="editorSearch" style="display:none; width:100%">
+            <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="cueSearchInput" placeholder="ابحث داخل الجمل…"></div>
+          </div>
+        </div>
+
+        <!-- لوح القوالب -->
+        <div class="templates" id="templateOptions" style="display:none">
+          <!-- يتم البناء برمجياً -->
+        </div>
+
+        <!-- لوح تحرير النصوص -->
+        <div class="editor-panel" id="editorPanel" style="display:none">
+          <div class="cue-list" id="cueList">
+            <!-- يتم البناء برمجياً -->
+          </div>
+        </div>
+
+        <!-- رسالة ترحيبية قبل رفع الفيديو -->
+        <div id="welcomeMessage" style="padding: 20px; text-align: center; color: #94a3b8;">
+          <i class="fa-solid fa-video" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+          <h3 style="margin-bottom: 12px; color: #e5e7eb;">مرحباً بك في مولد الترجمة</h3>
+          <p style="line-height: 1.6; margin-bottom: 16px;">ارفع فيديو لبدء إنشاء الترجمة التلقائية</p>
+          
+          <label class="btn primary" title="اختر فيديو" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 10px; font-weight: 600; border: 1px solid transparent; background: linear-gradient(135deg,#3b82f6,#1e40af); color: #e5e7eb; cursor: pointer; transition: .18s ease; margin-bottom: 16px;">
+            <i class="fa-solid fa-upload"></i>
+            <span>رفع فيديو</span>
+            <input id="file" type="file" accept="video/*" hidden />
+          </label>
+          
+          <div style="background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid #1f2a44;">
+            <i class="fa-solid fa-hand-pointer" style="margin-left: 8px;"></i>
+            <span>أو اسحب ملف الفيديو إلى مساحة العمل</span>
+          </div>
+        </div>
+
+        <div class="log" id="log">جاهز.</div>
+      </aside>
+    </main>
+  </div>
+
+</body>
+</html>
