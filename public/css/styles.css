@@ -400,7 +400,14 @@ video track[kind="subtitles"]{display:none!important}
   transition: opacity 0.2s ease;
 }
 
-.caption-container:hover .resize-handles {
+.caption-container:hover .resize-handles,
+.caption-box:hover .resize-handles {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+/* إظهار المقابض عند التركيز على الكابشن */
+.caption-box.caption-focus .resize-handles {
   pointer-events: auto;
   opacity: 1;
 }
@@ -468,3 +475,93 @@ video track[kind="subtitles"]{display:none!important}
 }
 .caption-container{padding:0.5%}
 .caption-box{max-width:98%;}
+
+/* أنماط الهايلايت كلمة بكلمة */
+.word-element {
+  display: inline-block;
+  margin: 0 2px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: all 0.3s ease-in-out;
+  cursor: pointer;
+  position: relative;
+  white-space: nowrap; /* منع كسر الكلمة */
+  word-break: keep-all; /* الحفاظ على الكلمة كاملة */
+  overflow-wrap: normal; /* عدم كسر الكلمة */
+}
+
+.word-element.highlighted {
+  background-color: rgba(255, 0, 0, 0.3) !important;
+  color: #ff0000 !important;
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(255, 0, 0, 0.4);
+  z-index: 1;
+}
+
+.word-element:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: scale(1.02);
+}
+
+/* تأثيرات الحركة للهايلايت */
+@keyframes wordHighlight {
+  0% { 
+    background-color: transparent; 
+    transform: scale(1);
+  }
+  50% { 
+    background-color: rgba(255, 0, 0, 0.3); 
+    transform: scale(1.05);
+  }
+  100% { 
+    background-color: transparent; 
+    transform: scale(1);
+  }
+}
+
+.word-element.animate-highlight {
+  animation: wordHighlight 0.3s ease-in-out;
+}
+
+/* تحسينات للكابشن مع الهايلايت */
+.caption-box.word-highlight-mode {
+  line-height: 1.6;
+  word-spacing: 0.2em;
+  word-wrap: break-word; /* كسر النص عند الحاجة */
+  overflow-wrap: break-word; /* كسر النص عند الحاجة */
+  hyphens: none; /* عدم استخدام الواصلات */
+  width: auto !important; /* توسع تلقائي حسب المحتوى */
+  max-width: 95% !important; /* حد أقصى 95% من عرض الشاشة */
+  min-width: 200px !important; /* حد أدنى 200px */
+  white-space: normal !important; /* السماح بكسر الأسطر */
+  display: inline-block !important; /* يتوسع حسب المحتوى */
+}
+
+.caption-box.word-highlight-mode .word-element {
+  margin: 0 1px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  white-space: nowrap; /* منع كسر الكلمة الواحدة */
+  display: inline-block; /* عرض كعنصر منفصل */
+  vertical-align: top; /* محاذاة من الأعلى */
+}
+
+/* تأثيرات إضافية للكلمات المحددة */
+.word-element.highlighted::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #ff0000, #ff6b6b);
+  border-radius: 5px;
+  z-index: -1;
+  opacity: 0.3;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}

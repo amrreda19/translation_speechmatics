@@ -88,6 +88,32 @@
       "textShadow": "1px 1px 2px rgba(0, 0, 0, 0.1)",
       "border": "1px solid rgba(59, 130, 246, 0.3)",
       "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.15)"
+    },
+    {
+      "id": "word-highlight",
+      "name": "هايلايت كلمة بكلمة",
+      "fontFamily": "Arial, sans-serif",
+      "fontSize": "20px",
+      "fontWeight": "600",
+      "textColor": "#ffffff",
+      "background": {
+        "enabled": true,
+        "color": "rgba(0, 0, 0, 0.8)",
+        "paddingX": "15px",
+        "paddingY": "10px",
+        "borderRadius": "8px"
+      },
+      "animation": "fadeIn",
+      "align": "center",
+      "position": "bottom",
+      "textShadow": "2px 2px 4px rgba(0, 0, 0, 0.8)",
+      "wordHighlight": {
+        "enabled": true,
+        "highlightColor": "#ff0000",
+        "highlightBackground": "rgba(255, 0, 0, 0.3)",
+        "transitionDuration": "0.3s",
+        "wordSpacing": "0.2em"
+      }
     }
   ],
   "animations": {
@@ -110,6 +136,11 @@
       "keyframes": "@keyframes scaleIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }",
       "duration": "0.3s",
       "timingFunction": "ease-out"
+    },
+    "wordHighlight": {
+      "keyframes": "@keyframes wordHighlight { 0% { background-color: transparent; } 50% { background-color: rgba(255, 0, 0, 0.3); } 100% { background-color: transparent; } }",
+      "duration": "0.3s",
+      "timingFunction": "ease-in-out"
     }
   }
 }

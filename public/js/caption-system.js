@@ -227,6 +227,14 @@ function setupCaptionInteractions() {
     if (inertialRAF) { cancelAnimationFrame(inertialRAF); inertialRAF = null; }
     vel.vx = 0; vel.vy = 0;
     captionBox.classList.add('caption-focus');
+    
+    // إظهار المقابض عند النقر
+    const resizeHandles = captionBox.querySelector('.resize-handles');
+    if (resizeHandles) {
+      resizeHandles.style.opacity = '1';
+      resizeHandles.style.pointerEvents = 'auto';
+    }
+    
     document.body.style.userSelect = 'none';
     e.preventDefault();
   });
@@ -259,6 +267,18 @@ function setupCaptionInteractions() {
     dragging = false;
     document.body.style.userSelect = '';
     captionBox.classList.remove('caption-focus');
+    
+    // إخفاء المقابض بعد ثانيتين من الانتهاء من السحب
+    const resizeHandles = captionBox.querySelector('.resize-handles');
+    if (resizeHandles) {
+      setTimeout(() => {
+        if (resizeHandles && !captionBox.classList.contains('caption-focus')) {
+          resizeHandles.style.opacity = '';
+          resizeHandles.style.pointerEvents = '';
+        }
+      }, 2000);
+    }
+    
     inertialRAF = requestAnimationFrame(inertiaStep);
   });
 
@@ -358,6 +378,28 @@ function setupCaptionInteractions() {
       resetCaptionPosition();
     });
   }
+  
+  // إظهار المقابض عند التمرير فوق الكابشن
+  captionBox.addEventListener('mouseenter', () => {
+    const resizeHandles = captionBox.querySelector('.resize-handles');
+    if (resizeHandles) {
+      resizeHandles.style.opacity = '1';
+      resizeHandles.style.pointerEvents = 'auto';
+    }
+  });
+  
+  // إخفاء المقابض عند مغادرة الكابشن (بعد تأخير)
+  captionBox.addEventListener('mouseleave', () => {
+    const resizeHandles = captionBox.querySelector('.resize-handles');
+    if (resizeHandles && !captionBox.classList.contains('caption-focus')) {
+      setTimeout(() => {
+        if (resizeHandles && !captionBox.classList.contains('caption-focus')) {
+          resizeHandles.style.opacity = '';
+          resizeHandles.style.pointerEvents = '';
+        }
+      }, 500);
+    }
+  });
 }
 
 // دوال إدارة موضع الكابشن
@@ -446,8 +488,35 @@ function updateCaption() {
   const newText = activeIdx >= 0 ? window.vttCues[activeIdx].text : '';
   if (newText !== currentCaptionText) {
     currentCaptionText = newText;
-    captionBox.textContent = newText;
-    captionContainer.style.display = newText ? 'block' : 'none';
+    
+    // التحقق من وجود قالب الهايلايت كلمة بكلمة
+    const selectedTemplate = window.TemplateManager?.getSelectedTemplate();
+    if (selectedTemplate && selectedTemplate.id === 'word-highlight' && selectedTemplate.wordHighlight?.enabled) {
+      // إيقاف الهايلايت السابق
+      if (window.TemplateManager.stopWordHighlight) {
+        window.TemplateManager.stopWordHighlight();
+      }
+      
+      // تطبيق النص الجديد
+      captionBox.textContent = newText;
+      captionContainer.style.display = newText ? 'block' : 'none';
+      
+      // بدء الهايلايت الجديد إذا كان هناك نص
+      if (newText && activeIdx >= 0) {
+        const vttData = {
+          start: window.vttCues[activeIdx].start,
+          end: window.vttCues[activeIdx].end,
+          text: newText
+        };
+        if (window.TemplateManager.startWordHighlight) {
+          window.TemplateManager.startWordHighlight(captionBox, selectedTemplate, vttData);
+        }
+      }
+    } else {
+      // التطبيق العادي للكابشن
+      captionBox.textContent = newText;
+      captionContainer.style.display = newText ? 'block' : 'none';
+    }
     
     // التأكد من وجود المقابض عند تغيير النص
     if (newText) {
@@ -490,6 +559,23 @@ function ensureResizeHandles() {
     
     // إعادة إعداد التفاعلات
     setupResizeHandlesInteractions();
+  } else {
+    // إذا كانت المقابض موجودة، تأكد من إعادة إعداد التفاعلات
+    setupResizeHandlesInteractions();
+  }
+  
+  // إظهار المقابض مؤقتاً للتأكد من عملها
+  if (resizeHandles) {
+    resizeHandles.style.opacity = '1';
+    resizeHandles.style.pointerEvents = 'auto';
+    
+    // إخفاء المقابض بعد ثانيتين
+    setTimeout(() => {
+      if (resizeHandles) {
+        resizeHandles.style.opacity = '';
+        resizeHandles.style.pointerEvents = '';
+      }
+    }, 2000);
   }
 }
 

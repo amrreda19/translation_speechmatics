@@ -38,7 +38,8 @@ function templateDescription(id){
     'classic-white':'كلاسيكي أبيض بسيط',
     'tiktok-style':'ملوّن بأسلوب تيك توك',
     'karaoke':'كاريوكي مع تمييز الكلمات',
-    'capsule':'كبسولة أنيقة'
+    'capsule':'كبسولة أنيقة',
+    'word-highlight':'هايلايت كلمة بكلمة متزامن'
   };
   return map[id] || '';
 }
@@ -116,13 +117,22 @@ function applyTemplateStyles(tpl){
   
   // تطبيق القالب على الكابشن المحسن فقط
   if(captionBox && tpl){
-    captionBox.style.cssText = `
+    // إيقاف أي هايلايت سابق إذا كان موجوداً
+    if (isWordHighlightActive) {
+      stopWordHighlight();
+      // إعادة النص إلى حالته الأصلية
+      if (captionBox && currentCaptionText) {
+        captionBox.textContent = currentCaptionText;
+      }
+    }
+    
+    // تطبيق الأنماط الأساسية
+    const baseStyles = `
       font-family: ${tpl.fontFamily};
       font-size: ${tpl.fontSize};
       font-weight: ${tpl.fontWeight};
       color: ${tpl.textColor};
       text-align: ${tpl.align};
-      width: 100%;
       white-space: normal;
       overflow-wrap: anywhere;
       word-break: break-word;
@@ -140,9 +150,106 @@ function applyTemplateStyles(tpl){
       position: relative;
       pointer-events: auto;
     `;
+    
+    // تطبيق الأنماط حسب نوع القالب
+    if (tpl.id === 'word-highlight') {
+      captionBox.style.cssText = baseStyles + `
+        width: auto !important;
+        max-width: 95% !important;
+        min-width: 200px !important;
+        display: inline-block !important;
+      `;
+    } else {
+      captionBox.style.cssText = baseStyles + `width: 100%;`;
+    }
+
+    // إذا كان قالب الهايلايت كلمة بكلمة، تطبيقه
+    if (tpl.id === 'word-highlight' && tpl.wordHighlight?.enabled) {
+      // إضافة كلاس خاص للكابشن
+      captionBox.classList.add('word-highlight-mode');
+      
+      // الحصول على بيانات VTT الحالية
+      const vttCues = window.vttCues || [];
+      if (vttCues && vttCues.length > 0) {
+        // البحث عن الكابشن الحالي
+        const video = document.querySelector('video');
+        if (video) {
+          const currentTime = video.currentTime;
+          const currentCue = vttCues.find(cue => 
+            currentTime >= cue.start && currentTime <= cue.end
+          );
+          
+          if (currentCue) {
+            const vttData = {
+              start: currentCue.start,
+              end: currentCue.end,
+              text: currentCue.text
+            };
+            startWordHighlight(captionBox, tpl, vttData);
+          } else {
+            // إذا لم نجد كابشن حالي، نبدأ بالكابشن الأول
+            const firstCue = vttCues[0];
+            if (firstCue) {
+              const vttData = {
+                start: firstCue.start,
+                end: firstCue.end,
+                text: firstCue.text
+              };
+              startWordHighlight(captionBox, tpl, vttData);
+            }
+          }
+        }
+      } else {
+        // إذا لم تكن هناك بيانات VTT، نطبق الهايلايت على النص الحالي
+        const currentText = captionBox.textContent || captionBox.innerText;
+        if (currentText && currentText.trim()) {
+          const vttData = {
+            start: 0,
+            end: 5, // مدة افتراضية 5 ثوان
+            text: currentText
+          };
+          startWordHighlight(captionBox, tpl, vttData);
+        }
+      }
+    } else {
+      // إزالة كلاس الهايلايت إذا لم يكن قالب الهايلايت
+      captionBox.classList.remove('word-highlight-mode');
+    }
+
+    // التأكد من وجود المقابض بعد تطبيق أي قالب
+    setTimeout(() => {
+      if (window.CaptionSystem && window.CaptionSystem.ensureResizeHandles) {
+        window.CaptionSystem.ensureResizeHandles();
+        
+        // إظهار المقابض مؤقتاً عند تطبيق القالب
+        const resizeHandles = captionBox.querySelector('.resize-handles');
+        if (resizeHandles) {
+          resizeHandles.style.opacity = '1';
+          resizeHandles.style.pointerEvents = 'auto';
+          
+          // إخفاء المقابض بعد 3 ثوان
+          setTimeout(() => {
+            if (resizeHandles) {
+              resizeHandles.style.opacity = '';
+              resizeHandles.style.pointerEvents = '';
+            }
+          }, 3000);
+        }
+      }
+    }, 100);
 
     if(typeof write === 'function') write(`تم تطبيق القالب: ${tpl.name}`, 'success');
     else console.log(`تم تطبيق القالب: ${tpl.name}`);
+    
+    // رسالة تشخيصية للهايلايت
+    if (tpl.id === 'word-highlight') {
+      console.log('تم تطبيق قالب الهايلايت:', {
+        hasVttCues: !!(window.vttCues && window.vttCues.length > 0),
+        vttCuesCount: window.vttCues ? window.vttCues.length : 0,
+        captionText: captionBox.textContent,
+        wordHighlightEnabled: tpl.wordHighlight?.enabled
+      });
+    }
   }
 }
 
@@ -207,6 +314,214 @@ function setupTemplateEventListeners(){
   if(tabTemplates) tabTemplates.addEventListener('click', switchToTemplatesTab);
 }
 
+// متغيرات نظام الهايلايت كلمة بكلمة
+let wordHighlightInterval = null;
+let currentWordIndex = 0;
+let wordElements = [];
+let isWordHighlightActive = false;
+
+// تقسيم النص إلى كلمات منفصلة
+function splitTextIntoWords(text) {
+  if (!text) return [];
+  // تقسيم النص إلى كلمات مع الحفاظ على علامات الترقيم
+  return text.trim().split(/\s+/).filter(word => word.length > 0);
+}
+
+// إنشاء عناصر الكلمات مع الهايلايت
+function createWordElements(text, template) {
+  const words = splitTextIntoWords(text);
+  const wordHighlight = template.wordHighlight;
+  
+  return words.map((word, index) => {
+    const span = document.createElement('span');
+    span.textContent = word;
+    span.className = 'word-element';
+    span.dataset.wordIndex = index;
+    
+    // تطبيق الأنماط الأساسية
+    span.style.cssText = `
+      display: inline-block;
+      margin: 0 2px;
+      padding: 2px 4px;
+      border-radius: 3px;
+      transition: all ${wordHighlight?.transitionDuration || '0.3s'} ease-in-out;
+      cursor: pointer;
+    `;
+    
+    return span;
+  });
+}
+
+// تطبيق الهايلايت على كلمة محددة
+function highlightWord(wordIndex, template) {
+  if (!wordElements || wordElements.length === 0) return;
+  
+  // إزالة الهايلايت من جميع الكلمات
+  wordElements.forEach((wordEl, index) => {
+    wordEl.style.backgroundColor = 'transparent';
+    wordEl.style.color = template.textColor;
+    wordEl.classList.remove('highlighted');
+  });
+  
+  // تطبيق الهايلايت على الكلمة المحددة
+  if (wordIndex >= 0 && wordIndex < wordElements.length) {
+    const wordEl = wordElements[wordIndex];
+    const wordHighlight = template.wordHighlight;
+    
+    wordEl.style.backgroundColor = wordHighlight?.highlightBackground || 'rgba(255, 0, 0, 0.3)';
+    wordEl.style.color = wordHighlight?.highlightColor || '#ff0000';
+    wordEl.classList.add('highlighted');
+  }
+}
+
+// بدء نظام الهايلايت كلمة بكلمة
+function startWordHighlight(captionBox, template, vttData) {
+  if (!captionBox || !template || !template.wordHighlight?.enabled) return;
+  
+  stopWordHighlight(); // إيقاف أي هايلايت سابق
+  
+  const text = captionBox.textContent || captionBox.innerText;
+  if (!text) return;
+  
+  // إنشاء عناصر الكلمات
+  wordElements = createWordElements(text, template);
+  
+  // مسح محتوى الكابشن وإضافة الكلمات
+  captionBox.innerHTML = '';
+  wordElements.forEach(wordEl => {
+    captionBox.appendChild(wordEl);
+  });
+  
+  // تطبيق الأنماط الخاصة بالهايلايت
+  captionBox.style.width = 'auto';
+  captionBox.style.maxWidth = '95%';
+  captionBox.style.minWidth = '200px';
+  captionBox.style.display = 'inline-block';
+  
+  // إضافة مسافة بين الكلمات
+  if (template.wordHighlight?.wordSpacing) {
+    captionBox.style.letterSpacing = template.wordHighlight.wordSpacing;
+  }
+  
+    // إعادة إنشاء المقابض بعد تطبيق الهايلايت
+    setTimeout(() => {
+      if (window.CaptionSystem && window.CaptionSystem.ensureResizeHandles) {
+        window.CaptionSystem.ensureResizeHandles();
+      }
+    }, 100);
+  
+  isWordHighlightActive = true;
+  currentWordIndex = 0;
+  
+  // تطبيق الهايلايت على الكلمة الأولى فوراً
+  highlightWord(0, template);
+  
+  // بدء التزامن مع الفيديو
+  syncWordHighlightWithVideo(template, vttData);
+}
+
+// إيقاف نظام الهايلايت
+function stopWordHighlight() {
+  if (wordHighlightInterval) {
+    clearInterval(wordHighlightInterval);
+    wordHighlightInterval = null;
+  }
+  
+  isWordHighlightActive = false;
+  currentWordIndex = 0;
+  wordElements = [];
+  
+  // تنظيف النص من عناصر الهايلايت
+  const captionBox = window.captionBox || document.getElementById('captionBox');
+  if (captionBox) {
+    // إزالة كلاس الهايلايت
+    captionBox.classList.remove('word-highlight-mode');
+    
+    // إزالة جميع عناصر الكلمات وإعادة النص الأصلي
+    const wordElements = captionBox.querySelectorAll('.word-element');
+    if (wordElements.length > 0) {
+      // جمع النص من جميع عناصر الكلمات
+      const originalText = Array.from(wordElements).map(el => el.textContent).join(' ');
+      captionBox.innerHTML = originalText;
+    }
+    
+    // إعادة تعيين الأنماط للعرض العادي
+    captionBox.style.width = '';
+    captionBox.style.maxWidth = '';
+    captionBox.style.minWidth = '';
+    captionBox.style.display = '';
+    
+    // إعادة إنشاء المقابض بعد إيقاف الهايلايت
+    setTimeout(() => {
+      if (window.CaptionSystem && window.CaptionSystem.ensureResizeHandles) {
+        window.CaptionSystem.ensureResizeHandles();
+      }
+    }, 100);
+  }
+}
+
+// التزامن مع الفيديو
+function syncWordHighlightWithVideo(template, vttData) {
+  if (!isWordHighlightActive || !vttData) return;
+  
+  const video = document.querySelector('video');
+  if (!video) return;
+  
+  // حساب مدة كل كلمة بناءً على مدة الكابشن
+  const totalDuration = vttData.end - vttData.start;
+  const wordDuration = totalDuration / wordElements.length;
+  
+  // تحديث الهايلايت بناءً على وقت الفيديو
+  const updateHighlight = () => {
+    if (!isWordHighlightActive) return;
+    
+    const currentTime = video.currentTime;
+    const relativeTime = currentTime - vttData.start;
+    
+    if (relativeTime >= 0 && relativeTime <= totalDuration) {
+      // حساب فهرس الكلمة مع ضمان أن الكلمة الأولى تظهر فوراً
+      let newWordIndex;
+      if (relativeTime < wordDuration) {
+        newWordIndex = 0; // الكلمة الأولى تظهر فوراً
+      } else {
+        newWordIndex = Math.min(Math.floor(relativeTime / wordDuration), wordElements.length - 1);
+      }
+      
+      if (newWordIndex !== currentWordIndex && newWordIndex < wordElements.length) {
+        currentWordIndex = newWordIndex;
+        highlightWord(currentWordIndex, template);
+      }
+    } else if (relativeTime < 0) {
+      // قبل بداية الكابشن
+      highlightWord(-1, template);
+    } else {
+      // بعد نهاية الكابشن
+      highlightWord(-1, template);
+    }
+  };
+  
+  // تحديث كل 100ms
+  wordHighlightInterval = setInterval(updateHighlight, 100);
+  
+  // تحديث فوري
+  updateHighlight();
+}
+
+// تطبيق قالب الهايلايت كلمة بكلمة
+function applyWordHighlightTemplate(captionBox, template, vttData) {
+  if (!template || template.id !== 'word-highlight') {
+    return false; // ليس قالب الهايلايت
+  }
+  
+  // تطبيق الأنماط الأساسية أولاً
+  applyTemplateStyles(template);
+  
+  // بدء نظام الهايلايت
+  startWordHighlight(captionBox, template, vttData);
+  
+  return true;
+}
+
 // تصدير الدوال والمتغيرات للاستخدام في الملفات الأخرى
 window.TemplateManager = {
   loadTemplates,
@@ -217,7 +532,13 @@ window.TemplateManager = {
   getSelectedTemplate: () => selectedTemplate,
   setSelectedTemplate: (template) => { selectedTemplate = template; },
   getTemplates: () => templates,
-  initDOMElements
+  initDOMElements,
+  // دوال الهايلايت الجديدة
+  startWordHighlight,
+  stopWordHighlight,
+  applyWordHighlightTemplate,
+  highlightWord,
+  splitTextIntoWords
 };
 
 // تهيئة فورية عند تحميل الملف
