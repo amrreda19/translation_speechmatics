@@ -114,6 +114,35 @@
         "transitionDuration": "0.3s",
         "wordSpacing": "0.2em"
       }
+    },
+    {
+      "id": "yellow-sync-highlight",
+      "name": "تمييز أصفر متزامن",
+      "fontFamily": "Arial, sans-serif",
+      "fontSize": "24px",
+      "fontWeight": "700",
+      "textColor": "#ffffff",
+      "background": {
+        "enabled": false
+      },
+      "animation": "fadeIn",
+      "align": "center",
+      "position": "bottom",
+      "textShadow": "2px 2px 4px rgba(0, 0, 0, 0.8)",
+      "wordHighlight": {
+        "enabled": true,
+        "highlightColor": "#ffff00",
+        "highlightBackground": "transparent",
+        "transitionDuration": "0.4s",
+        "wordSpacing": "0.3em",
+        "syncWithAudio": true
+      },
+      "karaokeEffect": {
+        "enabled": true,
+        "highlightColor": "#ffff00",
+        "duration": 0.4,
+        "syncWithAudio": true
+      }
     }
   ],
   "animations": {
@@ -140,6 +169,11 @@
     "wordHighlight": {
       "keyframes": "@keyframes wordHighlight { 0% { background-color: transparent; } 50% { background-color: rgba(255, 0, 0, 0.3); } 100% { background-color: transparent; } }",
       "duration": "0.3s",
+      "timingFunction": "ease-in-out"
+    },
+    "yellowSyncHighlight": {
+      "keyframes": "@keyframes yellowSyncHighlight { 0% { color: #ffffff; text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9); } 50% { color: #ffff00; text-shadow: 0 0 10px #ffff00, 2px 2px 6px rgba(0, 0, 0, 0.9); } 100% { color: #ffffff; text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9); } }",
+      "duration": "0.4s",
       "timingFunction": "ease-in-out"
     }
   }

@@ -5,6 +5,11 @@
 let selectedTemplate = null;
 let templates = null;
 
+// دالة الحصول على القالب المختار
+function getSelectedTemplate() {
+  return selectedTemplate;
+}
+
 // عناصر DOM المتعلقة بالقوالب (سيتم تهيئتها عند الحاجة)
 let templateOptions, applyTemplateBtn, refreshTpl, tabTemplates, templatesSearchWrap;
 
@@ -39,7 +44,8 @@ function templateDescription(id){
     'tiktok-style':'ملوّن بأسلوب تيك توك',
     'karaoke':'كاريوكي مع تمييز الكلمات',
     'capsule':'كبسولة أنيقة',
-    'word-highlight':'هايلايت كلمة بكلمة متزامن'
+    'word-highlight':'هايلايت كلمة بكلمة متزامن',
+    'yellow-sync-highlight':'تمييز أصفر متزامن بدون خلفية'
   };
   return map[id] || '';
 }
@@ -141,7 +147,7 @@ function applyTemplateStyles(tpl){
         background: ${tpl.background.color};
         padding: ${tpl.background.paddingY} ${tpl.background.paddingX};
         border-radius: ${tpl.background.borderRadius};
-      ` : 'background: rgba(0,0,0,0.85); padding: 12px 16px; border-radius: 8px;'}
+      ` : tpl.background?.enabled === false ? 'background: transparent !important; padding: 0 !important; border: none !important; box-shadow: none !important;' : 'background: rgba(0,0,0,0.85); padding: 12px 16px; border-radius: 8px;'}
       ${tpl.border ? `border: ${tpl.border};` : ''}
       ${tpl.boxShadow ? `box-shadow: ${tpl.boxShadow};` : ''}
       cursor: grab;
@@ -152,21 +158,25 @@ function applyTemplateStyles(tpl){
     `;
     
     // تطبيق الأنماط حسب نوع القالب
-    if (tpl.id === 'word-highlight') {
+    if (tpl.id === 'word-highlight' || tpl.id === 'yellow-sync-highlight') {
       captionBox.style.cssText = baseStyles + `
         width: auto !important;
         max-width: 95% !important;
         min-width: 200px !important;
         display: inline-block !important;
       `;
+      
     } else {
       captionBox.style.cssText = baseStyles + `width: 100%;`;
     }
 
     // إذا كان قالب الهايلايت كلمة بكلمة، تطبيقه
-    if (tpl.id === 'word-highlight' && tpl.wordHighlight?.enabled) {
+    if ((tpl.id === 'word-highlight' || tpl.id === 'yellow-sync-highlight') && tpl.wordHighlight?.enabled) {
       // إضافة كلاس خاص للكابشن
       captionBox.classList.add('word-highlight-mode');
+      if (tpl.id === 'yellow-sync-highlight') {
+        captionBox.classList.add('yellow-sync-highlight');
+      }
       
       // الحصول على بيانات VTT الحالية
       const vttCues = window.vttCues || [];
@@ -346,6 +356,7 @@ function createWordElements(text, template) {
       border-radius: 3px;
       transition: all ${wordHighlight?.transitionDuration || '0.3s'} ease-in-out;
       cursor: pointer;
+      background-color: transparent !important;
     `;
     
     return span;
@@ -358,8 +369,11 @@ function highlightWord(wordIndex, template) {
   
   // إزالة الهايلايت من جميع الكلمات
   wordElements.forEach((wordEl, index) => {
-    wordEl.style.backgroundColor = 'transparent';
-    wordEl.style.color = template.textColor;
+    wordEl.style.setProperty('background-color', 'transparent', 'important');
+    wordEl.style.setProperty('color', template.textColor, 'important');
+    wordEl.style.setProperty('text-shadow', template.textShadow || '2px 2px 6px rgba(0, 0, 0, 0.9)', 'important');
+    wordEl.style.setProperty('transform', 'scale(1)', 'important');
+    wordEl.style.setProperty('box-shadow', 'none', 'important');
     wordEl.classList.remove('highlighted');
   });
   
@@ -368,9 +382,23 @@ function highlightWord(wordIndex, template) {
     const wordEl = wordElements[wordIndex];
     const wordHighlight = template.wordHighlight;
     
-    wordEl.style.backgroundColor = wordHighlight?.highlightBackground || 'rgba(255, 0, 0, 0.3)';
-    wordEl.style.color = wordHighlight?.highlightColor || '#ff0000';
-    wordEl.classList.add('highlighted');
+    // تطبيق التأثيرات حسب نوع القالب
+    if (template.id === 'yellow-sync-highlight') {
+      // للقالب الجديد: الكلمة نفسها تصبح صفراء بدون خلفية
+      wordEl.style.setProperty('background-color', 'transparent', 'important');
+      wordEl.style.setProperty('color', wordHighlight?.highlightColor || '#ffff00', 'important');
+      wordEl.style.setProperty('text-shadow', `0 0 8px ${wordHighlight?.highlightColor || '#ffff00'}, 2px 2px 4px rgba(0, 0, 0, 0.8)`, 'important');
+      wordEl.style.setProperty('transform', 'scale(1.1)', 'important');
+      wordEl.style.setProperty('box-shadow', 'none', 'important');
+      wordEl.classList.add('highlighted');
+    } else {
+      // للقالب القديم: خلفية حمراء
+      wordEl.style.backgroundColor = wordHighlight?.highlightBackground || 'rgba(255, 0, 0, 0.3)';
+      wordEl.style.color = wordHighlight?.highlightColor || '#ff0000';
+      wordEl.style.textShadow = template.textShadow || '2px 2px 6px rgba(0, 0, 0, 0.9)';
+      wordEl.style.transform = 'scale(1.05)';
+      wordEl.classList.add('highlighted');
+    }
   }
 }
 
@@ -435,7 +463,7 @@ function stopWordHighlight() {
   const captionBox = window.captionBox || document.getElementById('captionBox');
   if (captionBox) {
     // إزالة كلاس الهايلايت
-    captionBox.classList.remove('word-highlight-mode');
+    captionBox.classList.remove('word-highlight-mode', 'yellow-sync-highlight');
     
     // إزالة جميع عناصر الكلمات وإعادة النص الأصلي
     const wordElements = captionBox.querySelectorAll('.word-element');
@@ -522,7 +550,14 @@ function applyWordHighlightTemplate(captionBox, template, vttData) {
   return true;
 }
 
-// تصدير الدوال والمتغيرات للاستخدام في الملفات الأخرى
+// تهيئة فورية عند تحميل الملف
+if(document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDOMElements);
+} else {
+  initDOMElements();
+}
+
+// إضافة إلى النطاق العام
 window.TemplateManager = {
   loadTemplates,
   renderTemplateOptions,
@@ -538,12 +573,6 @@ window.TemplateManager = {
   stopWordHighlight,
   applyWordHighlightTemplate,
   highlightWord,
-  splitTextIntoWords
+  splitTextIntoWords,
+  syncWordHighlightWithVideo
 };
-
-// تهيئة فورية عند تحميل الملف
-if(document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initDOMElements);
-} else {
-  initDOMElements();
-}

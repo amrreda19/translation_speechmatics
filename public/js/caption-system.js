@@ -79,6 +79,30 @@ function createCaptionSystem() {
   if (typeof write === 'function') write('تم إنشاء نظام الكابشن المحسن بنجاح', 'success');
 }
 
+// دالة التأكد من وجود مقابض التغيير
+function ensureResizeHandles() {
+  if (!captionBox) return;
+  
+  const resizeHandles = captionBox.querySelector('.resize-handles');
+  if (!resizeHandles) {
+    const handles = document.createElement('div');
+    handles.className = 'resize-handles';
+    handles.setAttribute('aria-hidden', 'true');
+
+    const handleDirections = ['nw', 'ne', 'e', 'se', 'sw', 'w'];
+    handleDirections.forEach(dir => {
+      const handle = document.createElement('div');
+      handle.className = `handle ${dir}`;
+      handle.setAttribute('data-dir', dir);
+      handle.title = `تغيير الحجم - ${dir}`;
+      handles.appendChild(handle);
+    });
+    
+    captionBox.appendChild(handles);
+    setupCaptionInteractions();
+  }
+}
+
 // إعداد تفاعلات الكابشن (السحب/الحجم)
 function setupCaptionInteractions() {
   if (!captionBox || !captionContainer) return;
@@ -491,9 +515,9 @@ function updateCaption() {
     
     // التحقق من وجود قالب الهايلايت كلمة بكلمة
     const selectedTemplate = window.TemplateManager?.getSelectedTemplate();
-    if (selectedTemplate && selectedTemplate.id === 'word-highlight' && selectedTemplate.wordHighlight?.enabled) {
+    if (selectedTemplate && (selectedTemplate.id === 'word-highlight' || selectedTemplate.id === 'yellow-sync-highlight') && selectedTemplate.wordHighlight?.enabled) {
       // إيقاف الهايلايت السابق
-      if (window.TemplateManager.stopWordHighlight) {
+      if (window.TemplateManager?.stopWordHighlight) {
         window.TemplateManager.stopWordHighlight();
       }
       
@@ -508,7 +532,7 @@ function updateCaption() {
           end: window.vttCues[activeIdx].end,
           text: newText
         };
-        if (window.TemplateManager.startWordHighlight) {
+        if (window.TemplateManager?.startWordHighlight) {
           window.TemplateManager.startWordHighlight(captionBox, selectedTemplate, vttData);
         }
       }
@@ -722,3 +746,6 @@ window.CaptionSystem = {
   getCaptionContainer: () => captionContainer,
   getCaptionPosition: () => captionPosition
 };
+
+// إضافة إلى النطاق العام
+window.CaptionSystem = CaptionSystem;

@@ -129,6 +129,14 @@ function setupVideoPlayerEventListeners() {
   // أحداث اختيار الملف
   if (fileInput) fileInput.addEventListener('change', onFilePicked);
   if (fileInput2) fileInput2.addEventListener('change', onFilePicked);
+  
+  // ربط زر "جديد" بـ file input
+  const newProjectBtn = document.getElementById('newProject');
+  if (newProjectBtn && fileInput) {
+    newProjectBtn.addEventListener('click', () => {
+      fileInput.click();
+    });
+  }
 
   // تشغيل/إيقاف
   if (playPause) {
@@ -217,7 +225,7 @@ function formatSize(bytes) {
   return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + units[i];
 }
 
-// تصدير الدوال للاستخدام في الملفات الأخرى
+// إضافة إلى النطاق العام
 window.VideoPlayer = {
   attachLocalVideo,
   transcribe,
@@ -225,3 +233,4 @@ window.VideoPlayer = {
   setupVideoPlayerEventListeners,
   formatSize
 };
+

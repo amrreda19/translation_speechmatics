@@ -163,6 +163,37 @@ video{ width:100%; height:100%; object-fit:contain; display:block; border:2px so
   scrollbar-width: thin;
   scrollbar-color: #22c55e rgba(15, 23, 42, 0.2);
 }
+
+/* شريط تمرير مخصص للقوالب */
+.templates::-webkit-scrollbar {
+  width: 8px;
+}
+
+.templates::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 10px;
+}
+
+.templates::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #22c55e, #16a34a);
+  border-radius: 10px;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.templates::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #4ade80, #22c55e);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
+}
+
+.templates::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #16a34a, #15803d);
+}
+
+/* دعم Firefox للقوالب */
+.templates {
+  scrollbar-width: thin;
+  scrollbar-color: #22c55e rgba(15, 23, 42, 0.2);
+}
 .side-head{
   display:flex; align-items:center; justify-content:space-between; gap:12px;
   padding:12px 12px; border-bottom:1px solid var(--border);
@@ -192,7 +223,14 @@ video{ width:100%; height:100%; object-fit:contain; display:block; border:2px so
 }
 
 .templates{
-  overflow:auto; padding:12px; display:grid; grid-template-columns:1fr; gap:10px;
+  overflow-y:auto; 
+  overflow-x:hidden;
+  padding:12px; 
+  display:grid; 
+  grid-template-columns:1fr; 
+  gap:10px;
+  max-height: calc(100vh - 200px);
+  height: calc(100vh - 200px);
 }
 .card{
   background:#0b1324; border:1px solid var(--border); border-radius:12px; padding:12px;
@@ -498,9 +536,47 @@ video track[kind="subtitles"]{display:none!important}
   z-index: 1;
 }
 
+/* استثناء للقالب الأصفر المتزامن - بدون خلفية */
+.yellow-sync-highlight .word-element.highlighted {
+  background-color: transparent !important;
+  color: #ffff00 !important;
+  text-shadow: 0 0 8px #ffff00, 2px 2px 4px rgba(0, 0, 0, 0.8) !important;
+  transform: scale(1.1) !important;
+  box-shadow: none !important;
+  animation: none !important; /* إيقاف أي animation */
+  border: none !important; /* إزالة أي حدود */
+  outline: none !important; /* إزالة أي حدود خارجية */
+}
+
+/* منع animation الحمراء للقالب الأصفر */
+.yellow-sync-highlight .word-element.animate-highlight {
+  animation: none !important;
+}
+
+/* أنماط خاصة للقالب الأصفر المتزامن */
+.word-highlight-mode.yellow-sync-highlight {
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* إزالة أي خلفية من عناصر الكلمات في القالب الأصفر */
+.yellow-sync-highlight .word-element {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
 .word-element:hover {
   background-color: rgba(255, 255, 255, 0.1);
   transform: scale(1.02);
+}
+
+/* إزالة تأثير hover للقالب الأصفر */
+.yellow-sync-highlight .word-element:hover {
+  background-color: transparent !important;
+  transform: scale(1) !important;
 }
 
 /* تأثيرات الحركة للهايلايت */
@@ -547,18 +623,11 @@ video track[kind="subtitles"]{display:none!important}
 }
 
 /* تأثيرات إضافية للكلمات المحددة */
-.word-element.highlighted::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  background: linear-gradient(45deg, #ff0000, #ff6b6b);
-  border-radius: 5px;
-  z-index: -1;
-  opacity: 0.3;
-  animation: pulse 1s infinite;
+
+
+/* إزالة تأثير ::before للقالب الأصفر */
+.yellow-sync-highlight .word-element.highlighted::before {
+  display: none !important;
 }
 
 @keyframes pulse {
