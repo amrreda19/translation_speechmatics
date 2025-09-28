@@ -634,3 +634,78 @@ video track[kind="subtitles"]{display:none!important}
   0%, 100% { opacity: 0.3; }
   50% { opacity: 0.6; }
 }
+
+/* أنماط قالب الملصقات الملونة */
+.sticker-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.sticker-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.sticker-word-box {
+  background-color: #305F39;
+  color: #C1D3A2;
+  padding: 2px 6px; /* مسافة بسيطة حول النص */
+  border-radius: 6px;
+  font-family: Arial, sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1; /* اجعل الارتفاع مساوٍ لارتفاع النص فقط */
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+  width: fit-content;
+  height: fit-content;
+  display: inline-flex; /* يضمن محاذاة الخلفية مع المحتوى */
+  align-items: center;
+  justify-content: center;
+}
+
+.sticker-word-box:hover {
+  transform: scale(1.05);
+}
+
+/* تأثيرات الحركة للملصقات */
+.sticker-word-box {
+  animation: stickerAppear 0.5s ease-out;
+}
+
+@keyframes stickerAppear {
+  0% { 
+    opacity: 0; 
+    transform: scale(0.8) translateY(20px); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: scale(1) translateY(0); 
+  }
+}
+
+/* تحسينات للشبكة */
+.sticker-grid .sticker-row:first-child .sticker-word-box {
+  animation-delay: 0.1s;
+}
+
+.sticker-grid .sticker-row:last-child .sticker-word-box {
+  animation-delay: 0.2s;
+}
+
+.sticker-grid .sticker-row .sticker-word-box:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.sticker-grid .sticker-row .sticker-word-box:nth-child(4) {
+  animation-delay: 0.25s;
+}

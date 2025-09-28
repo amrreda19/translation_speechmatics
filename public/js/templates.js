@@ -45,7 +45,8 @@ function templateDescription(id){
     'karaoke':'كاريوكي مع تمييز الكلمات',
     'capsule':'كبسولة أنيقة',
     'word-highlight':'هايلايت كلمة بكلمة متزامن',
-    'yellow-sync-highlight':'تمييز أصفر متزامن بدون خلفية'
+    'yellow-sync-highlight':'تمييز أصفر متزامن بدون خلفية',
+    'sticker-captions':'ملصقات ملونة في شبكة 2×2'
   };
   return map[id] || '';
 }
@@ -132,6 +133,11 @@ function applyTemplateStyles(tpl){
       }
     }
     
+    // إيقاف أي تزامن ملصقات سابق إذا كان موجوداً
+    if (isStickerSyncActive) {
+      stopStickerSync();
+    }
+    
     // تطبيق الأنماط الأساسية
     const baseStyles = `
       font-family: ${tpl.fontFamily};
@@ -164,6 +170,22 @@ function applyTemplateStyles(tpl){
         max-width: 95% !important;
         min-width: 200px !important;
         display: inline-block !important;
+      `;
+      
+    } else if (tpl.id === 'sticker-captions') {
+      // تطبيق أنماط قالب الملصقات
+      captionBox.style.cssText = baseStyles + `
+        width: auto !important;
+        max-width: 90% !important;
+        min-width: 300px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: transparent !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
       `;
       
     } else {
@@ -221,7 +243,21 @@ function applyTemplateStyles(tpl){
           startWordHighlight(captionBox, tpl, vttData);
         }
       }
+    } else if (tpl.id === 'sticker-captions' && tpl.stickerMode?.enabled) {
+      // تطبيق قالب الملصقات الملونة
+      applyStickerTemplate(captionBox, tpl);
+      
+      // رسالة تشخيصية للملصقات
+      console.log('تم تطبيق قالب الملصقات الملونة:', {
+        showOnSpeak: tpl.stickerMode?.showOnSpeak,
+        speakDelay: tpl.stickerMode?.speakDelay,
+        syncWithAudio: tpl.stickerMode?.syncWithAudio,
+        maxWords: tpl.stickerMode?.maxWords
+      });
     } else {
+      // تطبيق نظام المرحلتين على باقي القوالب
+      applyTwoPhaseTemplate(captionBox, tpl);
+      
       // إزالة كلاس الهايلايت إذا لم يكن قالب الهايلايت
       captionBox.classList.remove('word-highlight-mode');
     }
@@ -411,14 +447,26 @@ function startWordHighlight(captionBox, template, vttData) {
   const text = captionBox.textContent || captionBox.innerText;
   if (!text) return;
   
-  // إنشاء عناصر الكلمات
-  wordElements = createWordElements(text, template);
+  // تقسيم النص إلى كلمات
+  const words = splitTextIntoWords(text);
+  if (words.length === 0) return;
   
-  // مسح محتوى الكابشن وإضافة الكلمات
+  // مسح محتوى الكابشن
   captionBox.innerHTML = '';
-  wordElements.forEach(wordEl => {
-    captionBox.appendChild(wordEl);
-  });
+  
+  // إنشاء حاوية للنص مع نظام المراحل المتعددة
+  const textContainer = document.createElement('div');
+  textContainer.className = 'word-highlight-phase-container';
+  textContainer.style.cssText = `
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+  `;
+  
+  captionBox.appendChild(textContainer);
   
   // تطبيق الأنماط الخاصة بالهايلايت
   captionBox.style.width = 'auto';
@@ -431,21 +479,18 @@ function startWordHighlight(captionBox, template, vttData) {
     captionBox.style.letterSpacing = template.wordHighlight.wordSpacing;
   }
   
-    // إعادة إنشاء المقابض بعد تطبيق الهايلايت
-    setTimeout(() => {
-      if (window.CaptionSystem && window.CaptionSystem.ensureResizeHandles) {
-        window.CaptionSystem.ensureResizeHandles();
-      }
-    }, 100);
+  // إعادة إنشاء المقابض بعد تطبيق الهايلايت
+  setTimeout(() => {
+    if (window.CaptionSystem && window.CaptionSystem.ensureResizeHandles) {
+      window.CaptionSystem.ensureResizeHandles();
+    }
+  }, 100);
   
   isWordHighlightActive = true;
   currentWordIndex = 0;
   
-  // تطبيق الهايلايت على الكلمة الأولى فوراً
-  highlightWord(0, template);
-  
-  // بدء التزامن مع الفيديو
-  syncWordHighlightWithVideo(template, vttData);
+  // بدء التزامن مع الفيديو مع دعم المراحل المتعددة
+  syncWordHighlightWithVideoPhases(template, vttData, words);
 }
 
 // إيقاف نظام الهايلايت
@@ -535,6 +580,145 @@ function syncWordHighlightWithVideo(template, vttData) {
   updateHighlight();
 }
 
+// التزامن مع الفيديو مع دعم المراحل المتعددة للهايلايت
+function syncWordHighlightWithVideoPhases(template, vttData, words) {
+  if (!isWordHighlightActive || !vttData) return;
+  
+  const video = document.querySelector('video');
+  if (!video) return;
+  
+  // حساب مدة كل كلمة بناءً على مدة الكابشن
+  const totalDuration = vttData.end - vttData.start;
+  const wordDuration = totalDuration / words.length;
+  
+  // تحديد المراحل
+  const maxWordsPerPhase = 4;
+  const hasSecondPhase = words.length > maxWordsPerPhase;
+  const firstPhaseWords = words.slice(0, maxWordsPerPhase);
+  const secondPhaseWords = words.slice(maxWordsPerPhase);
+  
+  // تحديث الهايلايت بناءً على وقت الفيديو مع دعم المراحل
+  const updateHighlight = () => {
+    if (!isWordHighlightActive) return;
+    
+    const currentTime = video.currentTime;
+    const relativeTime = currentTime - vttData.start;
+    
+    if (relativeTime >= 0 && relativeTime <= totalDuration) {
+      // حساب فهرس الكلمة مع ضمان أن الكلمة الأولى تظهر فوراً
+      let newWordIndex;
+      if (relativeTime < wordDuration) {
+        newWordIndex = 0; // الكلمة الأولى تظهر فوراً
+      } else {
+        newWordIndex = Math.min(Math.floor(relativeTime / wordDuration), words.length - 1);
+      }
+      
+      // تحديث عرض النص مع دعم المراحل المتعددة
+      updateWordHighlightDisplayWithPhases(newWordIndex, words, firstPhaseWords, secondPhaseWords, template);
+    } else if (relativeTime < 0) {
+      // قبل بداية الكابشن - إخفاء النص
+      updateWordHighlightDisplayWithPhases(-1, words, firstPhaseWords, secondPhaseWords, template);
+    } else {
+      // بعد نهاية الكابشن - إظهار جميع الكلمات
+      updateWordHighlightDisplayWithPhases(words.length - 1, words, firstPhaseWords, secondPhaseWords, template);
+    }
+  };
+  
+  // تحديث كل 16ms للحصول على تزامن أكثر دقة (60fps)
+  wordHighlightInterval = setInterval(updateHighlight, 16);
+  
+  // تحديث فوري
+  updateHighlight();
+}
+
+// تحديث عرض الهايلايت مع دعم المراحل المتعددة
+function updateWordHighlightDisplayWithPhases(wordIndex, allWords, firstPhaseWords, secondPhaseWords, template) {
+  const captionBox = window.captionBox || document.getElementById('captionBox');
+  if (!captionBox) return;
+  
+  const textContainer = captionBox.querySelector('.word-highlight-phase-container');
+  if (!textContainer) return;
+  
+  const maxWordsPerPhase = 4;
+  const hasSecondPhase = allWords.length > maxWordsPerPhase;
+  
+  // تحديد المرحلة الحالية
+  let currentPhase = 1;
+  let wordsToShow = firstPhaseWords;
+  
+  if (hasSecondPhase && wordIndex >= maxWordsPerPhase) {
+    currentPhase = 2;
+    wordsToShow = secondPhaseWords;
+  }
+  
+  // مسح النص الحالي
+  textContainer.innerHTML = '';
+  
+  // إظهار الكلمات المناسبة للمرحلة الحالية
+  if (wordIndex >= 0) {
+    const wordsInCurrentPhase = currentPhase === 1 ? firstPhaseWords : secondPhaseWords;
+    const startIndex = currentPhase === 1 ? 0 : maxWordsPerPhase;
+    const relativeWordIndex = wordIndex - startIndex;
+    
+    // إظهار جميع الكلمات في المرحلة الحالية مرة واحدة
+    wordsInCurrentPhase.forEach((word, index) => {
+      const wordSpan = document.createElement('span');
+      wordSpan.textContent = word;
+      wordSpan.className = 'word-element';
+      wordSpan.dataset.wordIndex = index;
+      
+      // تطبيق الأنماط الأساسية
+      wordSpan.style.cssText = `
+        display: inline-block;
+        margin: 0 2px;
+        padding: 2px 4px;
+        border-radius: 3px;
+        transition: all ${template.wordHighlight?.transitionDuration || '0.3s'} ease-in-out;
+        cursor: pointer;
+      `;
+      
+      // تطبيق الهايلايت حسب نوع القالب
+      if (template.id === 'yellow-sync-highlight') {
+        // للقالب الأصفر: جميع الكلمات تظهر باللون الأبيض، الكلمة الحالية باللون الأصفر
+        if (index === relativeWordIndex) {
+          // الكلمة الحالية: أصفر مع تأثير
+          wordSpan.style.setProperty('background-color', 'transparent', 'important');
+          wordSpan.style.setProperty('color', template.wordHighlight?.highlightColor || '#ffff00', 'important');
+          wordSpan.style.setProperty('text-shadow', `0 0 8px ${template.wordHighlight?.highlightColor || '#ffff00'}, 2px 2px 4px rgba(0, 0, 0, 0.8)`, 'important');
+          wordSpan.style.setProperty('transform', 'scale(1.1)', 'important');
+          wordSpan.style.setProperty('box-shadow', 'none', 'important');
+          wordSpan.classList.add('highlighted');
+        } else {
+          // الكلمات الأخرى: أبيض عادي
+          wordSpan.style.setProperty('background-color', 'transparent', 'important');
+          wordSpan.style.setProperty('color', template.textColor || '#ffffff', 'important');
+          wordSpan.style.setProperty('text-shadow', template.textShadow || '2px 2px 4px rgba(0, 0, 0, 0.8)', 'important');
+          wordSpan.style.setProperty('transform', 'scale(1)', 'important');
+          wordSpan.style.setProperty('box-shadow', 'none', 'important');
+        }
+      } else {
+        // للقالب الأحمر: جميع الكلمات تظهر باللون الأبيض، الكلمة الحالية باللون الأحمر
+        if (index === relativeWordIndex) {
+          // الكلمة الحالية: أحمر مع خلفية
+          wordSpan.style.backgroundColor = template.wordHighlight?.highlightBackground || 'rgba(255, 0, 0, 0.3)';
+          wordSpan.style.color = template.wordHighlight?.highlightColor || '#ff0000';
+          wordSpan.style.textShadow = template.textShadow || '2px 2px 6px rgba(0, 0, 0, 0.9)';
+          wordSpan.style.transform = 'scale(1.05)';
+          wordSpan.classList.add('highlighted');
+        } else {
+          // الكلمات الأخرى: أبيض عادي
+          wordSpan.style.backgroundColor = 'transparent';
+          wordSpan.style.color = template.textColor || '#ffffff';
+          wordSpan.style.textShadow = template.textShadow || '2px 2px 4px rgba(0, 0, 0, 0.8)';
+          wordSpan.style.transform = 'scale(1)';
+        }
+      }
+      
+      textContainer.appendChild(wordSpan);
+    });
+  }
+}
+
 // تطبيق قالب الهايلايت كلمة بكلمة
 function applyWordHighlightTemplate(captionBox, template, vttData) {
   if (!template || template.id !== 'word-highlight') {
@@ -557,6 +741,551 @@ if(document.readyState === 'loading') {
   initDOMElements();
 }
 
+// متغيرات قالب الملصقات
+let stickerColorIndex = 0;
+let stickerSyncInterval = null;
+let currentStickerWordIndex = 0;
+let stickerWordElements = [];
+let isStickerSyncActive = false;
+
+// تطبيق قالب الملصقات الملونة
+function applyStickerTemplate(captionBox, template, vttData = null) {
+  if (!captionBox || !template || !template.stickerMode?.enabled) return;
+  
+  const text = captionBox.textContent || captionBox.innerText;
+  if (!text) return;
+  
+  // تقسيم النص إلى كلمات
+  const words = splitTextIntoWords(text);
+  if (words.length === 0) return;
+  
+  // مسح محتوى الكابشن
+  captionBox.innerHTML = '';
+  
+  // إنشاء شبكة 2×2
+  const gridContainer = document.createElement('div');
+  gridContainer.className = 'sticker-grid';
+  gridContainer.style.cssText = `
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: ${template.stickerMode.lineGap || template.stickerMode.wordBoxMargin || '12px'};
+  `;
+  
+  // إنشاء السطر الأول (كلمتين)
+  const firstRow = createStickerRow([], template); // فارغ في البداية
+  gridContainer.appendChild(firstRow);
+  
+  // إنشاء السطر الثاني (كلمتين)
+  const secondRow = createStickerRow([], template); // فارغ في البداية
+  gridContainer.appendChild(secondRow);
+  
+  captionBox.appendChild(gridContainer);
+  
+  // بدء التزامن مع الصوت إذا كان مفعلاً
+  if (template.stickerMode.syncWithAudio && vttData) {
+    startStickerSync(captionBox, template, vttData, words);
+  }
+  
+  // إعادة إنشاء المقابض
+  setTimeout(() => {
+    if (window.CaptionSystem && window.CaptionSystem.ensureResizeHandles) {
+      window.CaptionSystem.ensureResizeHandles();
+    }
+  }, 100);
+}
+
+// إنشاء سطر من الملصقات
+function createStickerRow(words, template) {
+  const row = document.createElement('div');
+  row.className = 'sticker-row';
+  row.style.cssText = `
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: ${template.stickerMode.wordGap || template.stickerMode.wordBoxMargin || '8px'};
+  `;
+  
+  // إنشاء مكانين للكلمات (حتى لو كانت فارغة)
+  for (let i = 0; i < 2; i++) {
+    const wordBox = document.createElement('div');
+    wordBox.className = 'sticker-word-box';
+    wordBox.style.cssText = `
+      background-color: transparent;
+      color: transparent;
+      padding: 2px 6px;
+      border-radius: ${template.stickerMode.wordBoxBorderRadius || '8px'};
+      font-family: ${template.fontFamily};
+      font-size: ${template.fontSize};
+      font-weight: ${template.fontWeight};
+      text-align: center;
+      line-height: 1;
+      white-space: nowrap;
+      box-shadow: none;
+      transition: none;
+      cursor: pointer;
+      user-select: none;
+      width: fit-content;
+      opacity: 0;
+      visibility: hidden;
+      transform: scale(0.3);
+    `;
+    row.appendChild(wordBox);
+  }
+  
+  return row;
+}
+
+// إنشاء صندوق الكلمة
+function createWordBox(word, template) {
+  const wordBox = document.createElement('div');
+  wordBox.className = 'sticker-word-box';
+  
+  // الحصول على اللون التالي
+  const color = getNextStickerColor(template);
+  
+  // تطبيق الأنماط
+  wordBox.style.cssText = `
+    background-color: ${color.background};
+    color: ${color.text};
+    padding: 2px 6px;
+    border-radius: ${template.stickerMode.wordBoxBorderRadius || '8px'};
+    font-family: ${template.fontFamily};
+    font-size: ${template.fontSize};
+    font-weight: ${template.fontWeight};
+    text-align: center;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+    cursor: pointer;
+    user-select: none;
+    width: fit-content;
+  `;
+  
+  wordBox.textContent = word;
+  
+  // إضافة تأثير hover
+  wordBox.addEventListener('mouseenter', () => {
+    wordBox.style.transform = 'scale(1.05)';
+  });
+  
+  wordBox.addEventListener('mouseleave', () => {
+    wordBox.style.transform = 'scale(1)';
+  });
+  
+  return wordBox;
+}
+
+// الحصول على اللون التالي للملصق
+function getNextStickerColor(template) {
+  const colors = template.stickerMode.colors || [];
+  if (colors.length === 0) {
+    return { background: '#305F39', text: '#C1D3A2' };
+  }
+  
+  let color;
+  if (template.stickerMode.colorMode === 'random') {
+    // اختيار لون عشوائي
+    color = colors[Math.floor(Math.random() * colors.length)];
+  } else {
+    // اختيار لون بالتتابع
+    color = colors[stickerColorIndex % colors.length];
+    stickerColorIndex++;
+  }
+  
+  return color;
+}
+
+// الحصول على اللون حسب الفهرس المحدد
+function getStickerColorByIndex(template, wordIndex) {
+  const colors = template.stickerMode.colors || [];
+  if (colors.length === 0) {
+    return { background: '#305F39', text: '#C1D3A2' };
+  }
+  
+  if (template.stickerMode.colorMode === 'random') {
+    // اختيار لون عشوائي بناءً على الفهرس
+    return colors[wordIndex % colors.length];
+  } else {
+    // اختيار لون بالتتابع بناءً على الفهرس
+    return colors[wordIndex % colors.length];
+  }
+}
+
+// إعادة تعيين فهرس الألوان
+function resetStickerColorIndex() {
+  stickerColorIndex = 0;
+}
+
+// بدء التزامن مع الصوت للملصقات
+function startStickerSync(captionBox, template, vttData, words) {
+  if (!template.stickerMode?.syncWithAudio || !vttData) return;
+  
+  stopStickerSync(); // إيقاف أي تزامن سابق
+  
+  // الحصول على جميع عناصر الكلمات
+  stickerWordElements = captionBox.querySelectorAll('.sticker-word-box');
+  if (stickerWordElements.length === 0) return;
+  
+  isStickerSyncActive = true;
+  currentStickerWordIndex = -1; // بدء من -1 لضمان عدم إظهار أي كلمة في البداية
+  
+  // إخفاء جميع الكلمات في البداية تماماً
+  stickerWordElements.forEach(wordEl => {
+    wordEl.style.opacity = '0';
+    wordEl.style.transform = 'scale(0.3)';
+    wordEl.style.transition = 'none'; // بدون انتقالات لتجنب التأخير
+    wordEl.style.visibility = 'hidden';
+  });
+  
+  // بدء التزامن مع الفيديو
+  syncStickerWithVideo(template, vttData, words);
+}
+
+// إيقاف التزامن مع الصوت للملصقات
+function stopStickerSync() {
+  if (stickerSyncInterval) {
+    clearInterval(stickerSyncInterval);
+    stickerSyncInterval = null;
+  }
+  
+  isStickerSyncActive = false;
+  currentStickerWordIndex = 0;
+  stickerWordElements = [];
+}
+
+// التزامن مع الفيديو للملصقات
+function syncStickerWithVideo(template, vttData, words) {
+  if (!isStickerSyncActive || !vttData) return;
+  
+  const video = document.querySelector('video');
+  if (!video) return;
+  
+  // حساب مدة كل كلمة بناءً على مدة الكابشن
+  const totalDuration = vttData.end - vttData.start;
+  const wordDuration = totalDuration / words.length;
+  
+  // تحديد المراحل
+  const maxWordsPerPhase = 4;
+  const hasSecondPhase = words.length > maxWordsPerPhase;
+  const firstPhaseWords = words.slice(0, maxWordsPerPhase);
+  const secondPhaseWords = words.slice(maxWordsPerPhase);
+  
+  // تحديث الملصقات بناءً على وقت الفيديو
+  const updateStickers = () => {
+    if (!isStickerSyncActive) return;
+    
+    const currentTime = video.currentTime;
+    const relativeTime = currentTime - vttData.start;
+    
+    if (relativeTime >= 0 && relativeTime <= totalDuration) {
+      let newWordIndex;
+      
+      if (template.stickerMode?.showOnSpeak) {
+        // إظهار الكلمة عند نطقها فقط - بدون أي تأخير
+        if (relativeTime < 0) {
+          newWordIndex = -1; // لا تظهر أي كلمة قبل بداية الكابشن
+        } else {
+          // حساب دقيق للكلمة الحالية
+          newWordIndex = Math.min(Math.floor(relativeTime / wordDuration), words.length - 1);
+          
+          // التأكد من أن الكلمة تظهر فوراً عند بداية وقتها
+          if (relativeTime >= 0 && relativeTime < wordDuration && newWordIndex === 0) {
+            newWordIndex = 0; // الكلمة الأولى تظهر فوراً
+          }
+        }
+      } else {
+        // العرض التقليدي بدون تأخير
+        newWordIndex = Math.min(Math.floor(relativeTime / wordDuration), words.length - 1);
+      }
+      
+      // تحديث عرض الكلمات مع دعم المرحلتين
+      updateStickerDisplayWithPhases(newWordIndex, words, firstPhaseWords, secondPhaseWords, template);
+    } else if (relativeTime < 0) {
+      // قبل بداية الكابشن - إخفاء جميع الكلمات
+      updateStickerDisplayWithPhases(-1, words, firstPhaseWords, secondPhaseWords, template);
+    } else {
+      // بعد نهاية الكابشن - إظهار جميع الكلمات
+      updateStickerDisplayWithPhases(words.length - 1, words, firstPhaseWords, secondPhaseWords, template);
+    }
+  };
+  
+  // تحديث كل 16ms للحصول على تزامن أكثر دقة (60fps)
+  stickerSyncInterval = setInterval(updateStickers, 16);
+  
+  // تحديث فوري
+  updateStickers();
+}
+
+// تحديث عرض الملصقات مع دعم المرحلتين
+function updateStickerDisplayWithPhases(wordIndex, allWords, firstPhaseWords, secondPhaseWords, template) {
+  if (!stickerWordElements || stickerWordElements.length === 0) return;
+  
+  const maxWordsPerPhase = 4;
+  const hasSecondPhase = allWords.length > maxWordsPerPhase;
+  
+  // تحديد المرحلة الحالية
+  let currentPhase = 1;
+  let wordsToShow = firstPhaseWords;
+  
+  if (hasSecondPhase && wordIndex >= maxWordsPerPhase) {
+    currentPhase = 2;
+    wordsToShow = secondPhaseWords;
+  }
+  
+  // تحديث جميع الصناديق
+  stickerWordElements.forEach((wordEl, index) => {
+    // إخفاء جميع الصناديق أولاً
+    wordEl.style.transition = 'none';
+    wordEl.style.opacity = '0';
+    wordEl.style.transform = 'scale(0.3)';
+    wordEl.style.visibility = 'hidden';
+    wordEl.style.backgroundColor = 'transparent';
+    wordEl.style.color = 'transparent';
+    wordEl.textContent = '';
+  });
+  
+  // إظهار الكلمات المناسبة للمرحلة الحالية
+  if (wordIndex >= 0) {
+    const wordsInCurrentPhase = currentPhase === 1 ? firstPhaseWords : secondPhaseWords;
+    const startIndex = currentPhase === 1 ? 0 : maxWordsPerPhase;
+    const relativeWordIndex = wordIndex - startIndex;
+    
+    wordsInCurrentPhase.forEach((word, index) => {
+      if (index <= relativeWordIndex && index < 4) {
+        const wordEl = stickerWordElements[index];
+        if (wordEl) {
+          // حساب الفهرس الصحيح للون بناءً على موضع الكلمة في الجملة الكاملة
+          const globalWordIndex = currentPhase === 1 ? index : index + 4;
+          const color = getStickerColorByIndex(template, globalWordIndex);
+          
+          // إظهار الكلمة فوراً
+          wordEl.style.transition = 'none';
+          wordEl.style.opacity = '1';
+          wordEl.style.transform = index === relativeWordIndex ? 'scale(1.1)' : 'scale(1)';
+          wordEl.style.visibility = 'visible';
+          wordEl.style.backgroundColor = color.background;
+          wordEl.style.color = color.text;
+          wordEl.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+          wordEl.textContent = word;
+          
+          // إضافة انتقال سريع بعد الإظهار الفوري
+          setTimeout(() => {
+            wordEl.style.transition = 'transform 0.1s ease';
+          }, 10);
+        }
+      }
+    });
+  }
+}
+
+// تحديث عرض الملصقات (الدالة القديمة للتوافق)
+function updateStickerDisplay(wordIndex) {
+  if (!stickerWordElements || stickerWordElements.length === 0) return;
+  
+  stickerWordElements.forEach((wordEl, index) => {
+    if (index <= wordIndex && wordIndex >= 0) {
+      // إظهار الكلمة فوراً بدون انتقالات
+      wordEl.style.transition = 'none';
+      wordEl.style.opacity = '1';
+      wordEl.style.transform = index === wordIndex ? 'scale(1.1)' : 'scale(1)';
+      wordEl.style.visibility = 'visible';
+      
+      // إضافة انتقال سريع بعد الإظهار الفوري
+      setTimeout(() => {
+        wordEl.style.transition = 'transform 0.1s ease';
+      }, 10);
+    } else {
+      // إخفاء الكلمة فوراً
+      wordEl.style.transition = 'none';
+      wordEl.style.opacity = '0';
+      wordEl.style.transform = 'scale(0.3)';
+      wordEl.style.visibility = 'hidden';
+    }
+  });
+}
+
+// تطبيق نظام المرحلتين على باقي القوالب
+function applyTwoPhaseTemplate(captionBox, template) {
+  if (!captionBox || !template) return;
+  
+  const text = captionBox.textContent || captionBox.innerText;
+  if (!text) return;
+  
+  // تقسيم النص إلى كلمات
+  const words = splitTextIntoWords(text);
+  if (words.length === 0) return;
+  
+  // مسح محتوى الكابشن
+  captionBox.innerHTML = '';
+  
+  // إنشاء حاوية للنص
+  const textContainer = document.createElement('div');
+  textContainer.className = 'two-phase-text-container';
+  textContainer.style.cssText = `
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+  `;
+  
+  captionBox.appendChild(textContainer);
+  
+  // بدء التزامن مع الصوت إذا كان متاحاً
+  const vttCues = window.vttCues || [];
+  if (vttCues && vttCues.length > 0) {
+    const video = document.querySelector('video');
+    if (video) {
+      const currentTime = video.currentTime;
+      const currentCue = vttCues.find(cue => 
+        currentTime >= cue.start && currentTime <= cue.end
+      );
+      
+      if (currentCue) {
+        const vttData = {
+          start: currentCue.start,
+          end: currentCue.end,
+          text: currentCue.text
+        };
+        startTwoPhaseSync(captionBox, template, vttData, words);
+      }
+    }
+  }
+}
+
+// متغيرات نظام المرحلتين للقوالب العادية
+let twoPhaseSyncInterval = null;
+let currentTwoPhaseWordIndex = 0;
+let twoPhaseWordElements = [];
+let isTwoPhaseSyncActive = false;
+
+// بدء التزامن مع الصوت للقوالب العادية
+function startTwoPhaseSync(captionBox, template, vttData, words) {
+  if (!vttData) return;
+  
+  stopTwoPhaseSync(); // إيقاف أي تزامن سابق
+  
+  // الحصول على جميع عناصر الكلمات
+  twoPhaseWordElements = captionBox.querySelectorAll('.two-phase-text-container');
+  if (twoPhaseWordElements.length === 0) return;
+  
+  isTwoPhaseSyncActive = true;
+  currentTwoPhaseWordIndex = -1;
+  
+  // بدء التزامن مع الفيديو
+  syncTwoPhaseWithVideo(template, vttData, words);
+}
+
+// إيقاف التزامن مع الصوت للقوالب العادية
+function stopTwoPhaseSync() {
+  if (twoPhaseSyncInterval) {
+    clearInterval(twoPhaseSyncInterval);
+    twoPhaseSyncInterval = null;
+  }
+  
+  isTwoPhaseSyncActive = false;
+  currentTwoPhaseWordIndex = 0;
+  twoPhaseWordElements = [];
+}
+
+// التزامن مع الفيديو للقوالب العادية
+function syncTwoPhaseWithVideo(template, vttData, words) {
+  if (!isTwoPhaseSyncActive || !vttData) return;
+  
+  const video = document.querySelector('video');
+  if (!video) return;
+  
+  // حساب مدة كل كلمة بناءً على مدة الكابشن
+  const totalDuration = vttData.end - vttData.start;
+  const wordDuration = totalDuration / words.length;
+  
+  // تحديد المراحل
+  const maxWordsPerPhase = 4;
+  const hasSecondPhase = words.length > maxWordsPerPhase;
+  const firstPhaseWords = words.slice(0, maxWordsPerPhase);
+  const secondPhaseWords = words.slice(maxWordsPerPhase);
+  
+  // تحديث النص بناءً على وقت الفيديو
+  const updateText = () => {
+    if (!isTwoPhaseSyncActive) return;
+    
+    const currentTime = video.currentTime;
+    const relativeTime = currentTime - vttData.start;
+    
+    if (relativeTime >= 0 && relativeTime <= totalDuration) {
+      let newWordIndex;
+      
+      // حساب فهرس الكلمة الحالية
+      newWordIndex = Math.min(Math.floor(relativeTime / wordDuration), words.length - 1);
+      
+      // تحديث عرض النص مع دعم المرحلتين
+      updateTwoPhaseDisplay(newWordIndex, words, firstPhaseWords, secondPhaseWords, template);
+    } else if (relativeTime < 0) {
+      // قبل بداية الكابشن - إخفاء النص
+      updateTwoPhaseDisplay(-1, words, firstPhaseWords, secondPhaseWords, template);
+    } else {
+      // بعد نهاية الكابشن - إظهار جميع الكلمات
+      updateTwoPhaseDisplay(words.length - 1, words, firstPhaseWords, secondPhaseWords, template);
+    }
+  };
+  
+  // تحديث كل 16ms للحصول على تزامن أكثر دقة (60fps)
+  twoPhaseSyncInterval = setInterval(updateText, 16);
+  
+  // تحديث فوري
+  updateText();
+}
+
+// تحديث عرض النص مع دعم المرحلتين
+function updateTwoPhaseDisplay(wordIndex, allWords, firstPhaseWords, secondPhaseWords, template) {
+  const captionBox = window.captionBox || document.getElementById('captionBox');
+  if (!captionBox) return;
+  
+  const textContainer = captionBox.querySelector('.two-phase-text-container');
+  if (!textContainer) return;
+  
+  const maxWordsPerPhase = 4;
+  const hasSecondPhase = allWords.length > maxWordsPerPhase;
+  
+  // تحديد المرحلة الحالية
+  let currentPhase = 1;
+  let wordsToShow = firstPhaseWords;
+  
+  if (hasSecondPhase && wordIndex >= maxWordsPerPhase) {
+    currentPhase = 2;
+    wordsToShow = secondPhaseWords;
+  }
+  
+  // مسح النص الحالي
+  textContainer.innerHTML = '';
+  
+  // إظهار الكلمات المناسبة للمرحلة الحالية
+  if (wordIndex >= 0) {
+    const wordsInCurrentPhase = currentPhase === 1 ? firstPhaseWords : secondPhaseWords;
+    const startIndex = currentPhase === 1 ? 0 : maxWordsPerPhase;
+    const relativeWordIndex = wordIndex - startIndex;
+    
+    wordsInCurrentPhase.forEach((word, index) => {
+      if (index <= relativeWordIndex) {
+        const wordSpan = document.createElement('span');
+        wordSpan.textContent = word;
+        wordSpan.style.cssText = `
+          display: inline-block;
+          margin: 0 2px;
+          padding: 0;
+          transition: all 0.1s ease;
+          ${index === relativeWordIndex ? 'transform: scale(1.05);' : ''}
+        `;
+        textContainer.appendChild(wordSpan);
+      }
+    });
+  }
+}
+
 // إضافة إلى النطاق العام
 window.TemplateManager = {
   loadTemplates,
@@ -574,5 +1303,25 @@ window.TemplateManager = {
   applyWordHighlightTemplate,
   highlightWord,
   splitTextIntoWords,
-  syncWordHighlightWithVideo
+  syncWordHighlightWithVideo,
+  syncWordHighlightWithVideoPhases,
+  updateWordHighlightDisplayWithPhases,
+  // دوال قالب الملصقات
+  applyStickerTemplate,
+  createStickerRow,
+  createWordBox,
+  getNextStickerColor,
+  getStickerColorByIndex,
+  resetStickerColorIndex,
+  startStickerSync,
+  stopStickerSync,
+  syncStickerWithVideo,
+  updateStickerDisplay,
+  updateStickerDisplayWithPhases,
+  // دوال نظام المرحلتين للقوالب العادية
+  applyTwoPhaseTemplate,
+  startTwoPhaseSync,
+  stopTwoPhaseSync,
+  syncTwoPhaseWithVideo,
+  updateTwoPhaseDisplay
 };

@@ -479,6 +479,39 @@ function forceUpdateCaption() {
   captionContainer.style.display = newText ? 'block' : 'none';
   currentCaptionText = newText;
   
+  // تطبيق القالب المختار إذا كان موجوداً
+  const selectedTemplate = window.TemplateManager?.getSelectedTemplate();
+  if (selectedTemplate && newText) {
+    if (selectedTemplate.id === 'sticker-captions' && selectedTemplate.stickerMode?.enabled) {
+      // قالب الملصقات الملونة
+      if (window.TemplateManager?.applyStickerTemplate) {
+        const vttData = activeIdx >= 0 ? {
+          start: window.vttCues[activeIdx].start,
+          end: window.vttCues[activeIdx].end,
+          text: newText
+        } : null;
+        window.TemplateManager.applyStickerTemplate(captionBox, selectedTemplate, vttData);
+      }
+    } else if ((selectedTemplate.id === 'word-highlight' || selectedTemplate.id === 'yellow-sync-highlight') && selectedTemplate.wordHighlight?.enabled) {
+      // قالب الهايلايت كلمة بكلمة
+      if (activeIdx >= 0) {
+        const vttData = {
+          start: window.vttCues[activeIdx].start,
+          end: window.vttCues[activeIdx].end,
+          text: newText
+        };
+        if (window.TemplateManager?.startWordHighlight) {
+          window.TemplateManager.startWordHighlight(captionBox, selectedTemplate, vttData);
+        }
+      }
+    } else {
+      // قوالب أخرى
+      if (window.TemplateManager?.applyTemplateStyles) {
+        window.TemplateManager.applyTemplateStyles(selectedTemplate);
+      }
+    }
+  }
+  
   // التأكد من وجود المقابض
   ensureResizeHandles();
   
@@ -513,27 +546,45 @@ function updateCaption() {
   if (newText !== currentCaptionText) {
     currentCaptionText = newText;
     
-    // التحقق من وجود قالب الهايلايت كلمة بكلمة
+    // التحقق من وجود قالب مختار
     const selectedTemplate = window.TemplateManager?.getSelectedTemplate();
-    if (selectedTemplate && (selectedTemplate.id === 'word-highlight' || selectedTemplate.id === 'yellow-sync-highlight') && selectedTemplate.wordHighlight?.enabled) {
-      // إيقاف الهايلايت السابق
+    if (selectedTemplate) {
+      // إيقاف الهايلايت السابق إذا كان موجوداً
       if (window.TemplateManager?.stopWordHighlight) {
         window.TemplateManager.stopWordHighlight();
       }
       
-      // تطبيق النص الجديد
+      // تطبيق النص الجديد أولاً
       captionBox.textContent = newText;
       captionContainer.style.display = newText ? 'block' : 'none';
       
-      // بدء الهايلايت الجديد إذا كان هناك نص
-      if (newText && activeIdx >= 0) {
-        const vttData = {
-          start: window.vttCues[activeIdx].start,
-          end: window.vttCues[activeIdx].end,
-          text: newText
-        };
-        if (window.TemplateManager?.startWordHighlight) {
-          window.TemplateManager.startWordHighlight(captionBox, selectedTemplate, vttData);
+      // تطبيق القالب حسب نوعه
+      if ((selectedTemplate.id === 'word-highlight' || selectedTemplate.id === 'yellow-sync-highlight') && selectedTemplate.wordHighlight?.enabled) {
+        // قالب الهايلايت كلمة بكلمة
+        if (newText && activeIdx >= 0) {
+          const vttData = {
+            start: window.vttCues[activeIdx].start,
+            end: window.vttCues[activeIdx].end,
+            text: newText
+          };
+          if (window.TemplateManager?.startWordHighlight) {
+            window.TemplateManager.startWordHighlight(captionBox, selectedTemplate, vttData);
+          }
+        }
+      } else if (selectedTemplate.id === 'sticker-captions' && selectedTemplate.stickerMode?.enabled) {
+        // قالب الملصقات الملونة
+        if (newText && window.TemplateManager?.applyStickerTemplate) {
+          const vttData = activeIdx >= 0 ? {
+            start: window.vttCues[activeIdx].start,
+            end: window.vttCues[activeIdx].end,
+            text: newText
+          } : null;
+          window.TemplateManager.applyStickerTemplate(captionBox, selectedTemplate, vttData);
+        }
+      } else {
+        // قوالب أخرى - تطبيق نظام المراحل المتعددة
+        if (window.TemplateManager?.applyTemplateStyles) {
+          window.TemplateManager.applyTemplateStyles(selectedTemplate);
         }
       }
     } else {

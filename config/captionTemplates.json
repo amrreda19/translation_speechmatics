@@ -143,6 +143,57 @@
         "duration": 0.4,
         "syncWithAudio": true
       }
+    },
+    {
+      "id": "sticker-captions",
+      "name": "ملصقات ملونة",
+      "fontFamily": "Arial, sans-serif",
+      "fontSize": "24px",
+      "fontWeight": "600",
+      "textColor": "#ffffff",
+      "background": {
+        "enabled": false
+      },
+      "animation": "scaleIn",
+      "align": "center",
+      "position": "center",
+      "stickerMode": {
+        "enabled": true,
+        "maxWords": 4,
+        "gridLayout": "2x2",
+        "wordBoxPadding": "12px 16px",
+        "wordBoxBorderRadius": "8px",
+        "wordBoxMargin": "4px",
+        "wordGap": "10px",
+        "lineGap": "14px",
+        "syncWithAudio": true,
+        "wordDuration": 0.8,
+        "showOnSpeak": true,
+        "speakDelay": 0,
+        "colors": [
+          {
+            "background": "#305F39",
+            "text": "#C1D3A2"
+          },
+          {
+            "background": "#FDC1C1",
+            "text": "#94543C"
+          },
+          {
+            "background": "#DDD38F",
+            "text": "#315626"
+          },
+          {
+            "background": "#8C4A2B",
+            "text": "#EFB2B7"
+          },
+          {
+            "background": "#5B5A56",
+            "text": "#EFE4B0"
+          }
+        ],
+        "colorMode": "sequential"
+      }
     }
   ],
   "animations": {

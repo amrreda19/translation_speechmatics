@@ -83,6 +83,37 @@ function saveCueText(idx, newText) {
       const captionContainer = window.CaptionSystem.getCaptionContainer();
       if (captionContainer) captionContainer.style.display = 'block';
       window.currentCaptionText = newText.trim(); // تحديث المتغير للمقارنة
+      
+      // تطبيق القالب المختار إذا كان موجوداً
+      const selectedTemplate = window.TemplateManager?.getSelectedTemplate();
+      if (selectedTemplate && newText.trim()) {
+        if (selectedTemplate.id === 'sticker-captions' && selectedTemplate.stickerMode?.enabled) {
+          // قالب الملصقات الملونة
+          if (window.TemplateManager?.applyStickerTemplate) {
+            const vttData = {
+              start: vttCues[idx].start,
+              end: vttCues[idx].end,
+              text: newText.trim()
+            };
+            window.TemplateManager.applyStickerTemplate(captionBox, selectedTemplate, vttData);
+          }
+        } else if ((selectedTemplate.id === 'word-highlight' || selectedTemplate.id === 'yellow-sync-highlight') && selectedTemplate.wordHighlight?.enabled) {
+          // قالب الهايلايت كلمة بكلمة
+          const vttData = {
+            start: vttCues[idx].start,
+            end: vttCues[idx].end,
+            text: newText.trim()
+          };
+          if (window.TemplateManager?.startWordHighlight) {
+            window.TemplateManager.startWordHighlight(captionBox, selectedTemplate, vttData);
+          }
+        } else {
+          // قوالب أخرى
+          if (window.TemplateManager?.applyTemplateStyles) {
+            window.TemplateManager.applyTemplateStyles(selectedTemplate);
+          }
+        }
+      }
     }
     
     // تحديث ملف VTT
@@ -146,6 +177,37 @@ function deleteCue(idx) {
             captionBox.textContent = vttCues[currentCueIndex].text;
             if (captionContainer) captionContainer.style.display = 'block';
             window.currentCaptionText = vttCues[currentCueIndex].text; // تحديث المتغير
+            
+            // تطبيق القالب المختار إذا كان موجوداً
+            const selectedTemplate = window.TemplateManager?.getSelectedTemplate();
+            if (selectedTemplate && vttCues[currentCueIndex].text) {
+              if (selectedTemplate.id === 'sticker-captions' && selectedTemplate.stickerMode?.enabled) {
+                // قالب الملصقات الملونة
+                if (window.TemplateManager?.applyStickerTemplate) {
+                  const vttData = {
+                    start: vttCues[currentCueIndex].start,
+                    end: vttCues[currentCueIndex].end,
+                    text: vttCues[currentCueIndex].text
+                  };
+                  window.TemplateManager.applyStickerTemplate(captionBox, selectedTemplate, vttData);
+                }
+              } else if ((selectedTemplate.id === 'word-highlight' || selectedTemplate.id === 'yellow-sync-highlight') && selectedTemplate.wordHighlight?.enabled) {
+                // قالب الهايلايت كلمة بكلمة
+                const vttData = {
+                  start: vttCues[currentCueIndex].start,
+                  end: vttCues[currentCueIndex].end,
+                  text: vttCues[currentCueIndex].text
+                };
+                if (window.TemplateManager?.startWordHighlight) {
+                  window.TemplateManager.startWordHighlight(captionBox, selectedTemplate, vttData);
+                }
+              } else {
+                // قوالب أخرى
+                if (window.TemplateManager?.applyTemplateStyles) {
+                  window.TemplateManager.applyTemplateStyles(selectedTemplate);
+                }
+              }
+            }
           } else {
             // إخفاء الكابشن إذا لم تعد هناك جمل
             if (captionContainer) captionContainer.style.display = 'none';
