@@ -298,6 +298,40 @@
         "scaleUp": 1.5,
         "scaleDown": 0.8
       }
+    },
+    {
+      "id": "arabic-typewriter",
+      "name": "كتابة عربية على الآلة الكاتبة",
+      "fontFamily": "Arial, sans-serif",
+      "fontSize": "26px",
+      "fontWeight": "700",
+      "textColor": "#ffffff",
+      "background": {
+        "enabled": true,
+        "color": "rgba(0, 0, 0, 0.85)",
+        "paddingX": "20px",
+        "paddingY": "15px",
+        "borderRadius": "8px"
+      },
+      "animation": "arabicTypewriter",
+      "align": "center",
+      "position": "bottom",
+      "textShadow": "2px 2px 6px rgba(0, 0, 0, 0.9)",
+      "direction": "rtl",
+      "typewriterMode": {
+        "enabled": true,
+        "charDelay": 100,
+        "syncWithAudio": true,
+        "blinkCursor": true,
+        "cursorColor": "#ffff00",
+        "cursorBlinkSpeed": "1.2s",
+        "showOnSpeak": true,
+        "speakDelay": 0,
+        "wordDuration": 0.8,
+        "transitionDuration": "0.05s",
+        "maxWordsPerPhase": 4,
+        "twoPhaseMode": true
+      }
     }
   ],
   "animations": {
@@ -350,6 +384,17 @@
       "keyframes": "@keyframes scaleTextGreen { 0% { color: #ffffff; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8); transform: scale(0.8); opacity: 0.7; } 20% { color: #00ff41; text-shadow: 0 0 20px #00ff41, 2px 2px 4px rgba(0, 0, 0, 0.8); transform: scale(1.5); opacity: 1; } 80% { color: #00ff41; text-shadow: 0 0 20px #00ff41, 2px 2px 4px rgba(0, 0, 0, 0.8); transform: scale(1.5); opacity: 1; } 100% { color: #ffffff; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8); transform: scale(0.8); opacity: 0.7; } }",
       "duration": "0.6s",
       "timingFunction": "ease-in-out"
+    },
+    "arabicTypewriter": {
+      "keyframes": "@keyframes arabicTypewriter { 0% { opacity: 0; transform: translateX(5px); } 100% { opacity: 1; transform: translateX(0); } }",
+      "duration": "0.15s",
+      "timingFunction": "ease-out"
+    },
+    "typewriterCursor": {
+      "keyframes": "@keyframes typewriterCursor { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }",
+      "duration": "1s",
+      "timingFunction": "linear",
+      "iterationCount": "infinite"
     }
   }
 }
