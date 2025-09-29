@@ -68,7 +68,9 @@ function templateDescription(id){
     'yellow-sync-highlight':'تمييز أصفر متزامن بدون خلفية',
     'sticker-captions':'ملصقات ملونة في شبكة 2×2',
     'highlight-caption':'هايلايت كابشن بارز بأسلوب VEED',
-    'single-word-sync':'كلمة واحدة متزامنة مع الصوت بدون خلفية'
+    'single-word-sync':'كلمة واحدة متزامنة مع الصوت بدون خلفية',
+    'wave-text-pink':'موجة نص وردي مع تأثير حركة الموجة',
+    'scale-text-green':'تكبير نص أخضر مع تأثير التكبير والتصغير'
   };
   return map[id] || '';
 }
@@ -191,7 +193,7 @@ function applyTemplateStyles(tpl){
     `;
     
     // تطبيق الأنماط حسب نوع القالب
-    if (tpl.id === 'word-highlight' || tpl.id === 'yellow-sync-highlight') {
+    if (tpl.id === 'word-highlight' || tpl.id === 'yellow-sync-highlight' || tpl.id === 'wave-text-pink' || tpl.id === 'scale-text-green') {
       captionBox.style.cssText = baseStyles + `
         width: auto !important;
         max-width: 95% !important;
@@ -220,11 +222,15 @@ function applyTemplateStyles(tpl){
     }
 
     // إذا كان قالب الهايلايت كلمة بكلمة، تطبيقه
-    if ((tpl.id === 'word-highlight' || tpl.id === 'yellow-sync-highlight') && tpl.wordHighlight?.enabled) {
+    if ((tpl.id === 'word-highlight' || tpl.id === 'yellow-sync-highlight' || tpl.id === 'wave-text-pink' || tpl.id === 'scale-text-green') && tpl.wordHighlight?.enabled) {
       // إضافة كلاس خاص للكابشن
       captionBox.classList.add('word-highlight-mode');
       if (tpl.id === 'yellow-sync-highlight') {
         captionBox.classList.add('yellow-sync-highlight');
+      } else if (tpl.id === 'wave-text-pink') {
+        captionBox.classList.add('wave-text-pink');
+      } else if (tpl.id === 'scale-text-green') {
+        captionBox.classList.add('scale-text-green');
       }
       
       // الحصول على بيانات VTT الحالية
@@ -474,6 +480,24 @@ function highlightWord(wordIndex, template) {
       wordEl.style.setProperty('transform', 'scale(1.1)', 'important');
       wordEl.style.setProperty('box-shadow', 'none', 'important');
       wordEl.classList.add('highlighted');
+    } else if (template.id === 'wave-text-pink') {
+      // للقالب البنفسجي: تطبيق تأثير الموجة البنفسجي
+      wordEl.style.setProperty('background-color', 'transparent', 'important');
+      wordEl.style.setProperty('color', wordHighlight?.highlightColor || '#7f6ee0', 'important');
+      wordEl.style.setProperty('text-shadow', `0 0 15px ${wordHighlight?.highlightColor || '#7f6ee0'}, 2px 2px 4px rgba(0, 0, 0, 0.8)`, 'important');
+      wordEl.style.setProperty('transform', 'translateY(-8px) scale(1.1)', 'important');
+      wordEl.style.setProperty('box-shadow', 'none', 'important');
+      wordEl.style.setProperty('animation', 'waveTextPink 0.8s ease-in-out', 'important');
+      wordEl.classList.add('highlighted');
+    } else if (template.id === 'scale-text-green') {
+      // للقالب الأخضر: تطبيق تأثير التكبير والتصغير الأخضر
+      wordEl.style.setProperty('background-color', 'transparent', 'important');
+      wordEl.style.setProperty('color', wordHighlight?.highlightColor || '#00ff41', 'important');
+      wordEl.style.setProperty('text-shadow', `0 0 20px ${wordHighlight?.highlightColor || '#00ff41'}, 2px 2px 4px rgba(0, 0, 0, 0.8)`, 'important');
+      wordEl.style.setProperty('transform', 'scale(1.5)', 'important');
+      wordEl.style.setProperty('box-shadow', 'none', 'important');
+      wordEl.style.setProperty('animation', 'scaleTextGreen 0.6s ease-in-out', 'important');
+      wordEl.classList.add('highlighted');
     } else {
       // للقالب القديم: خلفية حمراء
       wordEl.style.backgroundColor = wordHighlight?.highlightBackground || 'rgba(255, 0, 0, 0.3)';
@@ -555,7 +579,7 @@ function stopWordHighlight() {
   const captionBox = window.captionBox || document.getElementById('captionBox');
   if (captionBox) {
     // إزالة كلاس الهايلايت
-    captionBox.classList.remove('word-highlight-mode', 'yellow-sync-highlight');
+    captionBox.classList.remove('word-highlight-mode', 'yellow-sync-highlight', 'wave-text-pink', 'scale-text-green');
     
     // إزالة جميع عناصر الكلمات وإعادة النص الأصلي
     const wordElements = captionBox.querySelectorAll('.word-element');
@@ -742,6 +766,45 @@ function updateWordHighlightDisplayWithPhases(wordIndex, allWords, firstPhaseWor
           wordSpan.style.setProperty('text-shadow', template.textShadow || '2px 2px 4px rgba(0, 0, 0, 0.8)', 'important');
           wordSpan.style.setProperty('transform', 'scale(1)', 'important');
           wordSpan.style.setProperty('box-shadow', 'none', 'important');
+        }
+      } else if (template.id === 'wave-text-pink') {
+        // للقالب البنفسجي: جميع الكلمات تظهر باللون الأبيض، الكلمة الحالية باللون البنفسجي مع تأثير الموجة
+        if (index === relativeWordIndex) {
+          // الكلمة الحالية: بنفسجي مع تأثير الموجة
+          wordSpan.style.setProperty('background-color', 'transparent', 'important');
+          wordSpan.style.setProperty('color', template.wordHighlight?.highlightColor || '#7f6ee0', 'important');
+          wordSpan.style.setProperty('text-shadow', `0 0 15px ${template.wordHighlight?.highlightColor || '#7f6ee0'}, 2px 2px 4px rgba(0, 0, 0, 0.8)`, 'important');
+          wordSpan.style.setProperty('transform', 'translateY(-8px) scale(1.1)', 'important');
+          wordSpan.style.setProperty('box-shadow', 'none', 'important');
+          wordSpan.style.setProperty('animation', 'waveTextPink 0.8s ease-in-out', 'important');
+          wordSpan.classList.add('highlighted');
+        } else {
+          // الكلمات الأخرى: أبيض عادي
+          wordSpan.style.setProperty('background-color', 'transparent', 'important');
+          wordSpan.style.setProperty('color', template.textColor || '#ffffff', 'important');
+          wordSpan.style.setProperty('text-shadow', template.textShadow || '2px 2px 4px rgba(0, 0, 0, 0.8)', 'important');
+          wordSpan.style.setProperty('transform', 'scale(1)', 'important');
+          wordSpan.style.setProperty('box-shadow', 'none', 'important');
+        }
+      } else if (template.id === 'scale-text-green') {
+        // للقالب الأخضر: جميع الكلمات تظهر باللون الأبيض، الكلمة الحالية باللون الأخضر مع تأثير التكبير والتصغير
+        if (index === relativeWordIndex) {
+          // الكلمة الحالية: أخضر مع تأثير التكبير والتصغير
+          wordSpan.style.setProperty('background-color', 'transparent', 'important');
+          wordSpan.style.setProperty('color', template.wordHighlight?.highlightColor || '#00ff41', 'important');
+          wordSpan.style.setProperty('text-shadow', `0 0 20px ${template.wordHighlight?.highlightColor || '#00ff41'}, 2px 2px 4px rgba(0, 0, 0, 0.8)`, 'important');
+          wordSpan.style.setProperty('transform', 'scale(1.5)', 'important');
+          wordSpan.style.setProperty('box-shadow', 'none', 'important');
+          wordSpan.style.setProperty('animation', 'scaleTextGreen 0.6s ease-in-out', 'important');
+          wordSpan.classList.add('highlighted');
+        } else {
+          // الكلمات الأخرى: أبيض عادي مع حجم أصغر
+          wordSpan.style.setProperty('background-color', 'transparent', 'important');
+          wordSpan.style.setProperty('color', template.textColor || '#ffffff', 'important');
+          wordSpan.style.setProperty('text-shadow', template.textShadow || '2px 2px 4px rgba(0, 0, 0, 0.8)', 'important');
+          wordSpan.style.setProperty('transform', 'scale(0.8)', 'important');
+          wordSpan.style.setProperty('box-shadow', 'none', 'important');
+          wordSpan.style.setProperty('opacity', '0.7', 'important');
         }
       } else {
         // للقالب الأحمر: جميع الكلمات تظهر باللون الأبيض، الكلمة الحالية باللون الأحمر
