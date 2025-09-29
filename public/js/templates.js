@@ -37,6 +37,26 @@ async function loadTemplates(){
   }
 }
 
+// حقن @keyframes لأنميشن واحد بالاسم (يُستخدم مع قالب highlight-caption فقط)
+function injectAnimationByName(name) {
+  try {
+    if (!templates || !templates.animations || !templates.animations[name]) return;
+    const def = templates.animations[name];
+    if (!def || !def.keyframes) return;
+
+    const styleId = `caption-anim-${name}`;
+    let styleTag = document.getElementById(styleId);
+    if (!styleTag) {
+      styleTag = document.createElement('style');
+      styleTag.id = styleId;
+      document.head.appendChild(styleTag);
+    }
+    styleTag.textContent = def.keyframes;
+  } catch (e) {
+    console.error('Failed to inject animation keyframes', e);
+  }
+}
+
 // وصف القوالب
 function templateDescription(id){
   const map = {
@@ -786,6 +806,11 @@ function applyHighlightCaptionTemplate(captionBox, template) {
   
   // إضافة كلاس خاص للقالب الجديد
   captionBox.classList.add('highlight-caption-mode');
+
+  // حقن الأنميشن لهذا القالب فقط (سيُطبَّق على الكلمات لاحقاً)
+  if (template.animation && templates?.animations?.[template.animation]?.keyframes) {
+    injectAnimationByName(template.animation);
+  }
   
   // بدء التزامن مع الصوت إذا كان متاحاً
   const vttCues = window.vttCues || [];
@@ -803,6 +828,24 @@ function applyHighlightCaptionTemplate(captionBox, template) {
           end: currentCue.end,
           text: currentCue.text
         };
+        startHighlightCaptionSync(captionBox, template, vttData, words);
+      } else {
+        // لا يوجد cue حالي: ابدأ بأول cue كحل افتراضي
+        const firstCue = vttCues[0];
+        if (firstCue) {
+          const vttData = {
+            start: firstCue.start,
+            end: firstCue.end,
+            text: firstCue.text
+          };
+          startHighlightCaptionSync(captionBox, template, vttData, words);
+        }
+      }
+    } else {
+      // لا يوجد عنصر فيديو: استخدم نصاً افتراضياً مع مدة 5 ثوانٍ
+      const currentText = captionBox.textContent || captionBox.innerText;
+      if (currentText && currentText.trim()) {
+        const vttData = { start: 0, end: 5, text: currentText };
         startHighlightCaptionSync(captionBox, template, vttData, words);
       }
     }
@@ -1247,7 +1290,7 @@ function syncHighlightCaptionWithVideo(template, vttData, words) {
   const wordDuration = totalDuration / words.length;
   
   // تحديد المراحل
-  const maxWordsPerPhase = 4;
+  const maxWordsPerPhase = (template && template.highlightMode && template.highlightMode.maxWords) ? template.highlightMode.maxWords : 4;
   const hasSecondPhase = words.length > maxWordsPerPhase;
   const firstPhaseWords = words.slice(0, maxWordsPerPhase);
   const secondPhaseWords = words.slice(maxWordsPerPhase);
@@ -1265,14 +1308,23 @@ function syncHighlightCaptionWithVideo(template, vttData, words) {
       // حساب فهرس الكلمة الحالية
       newWordIndex = Math.min(Math.floor(relativeTime / wordDuration), words.length - 1);
       
-      // تحديث عرض النص مع دعم المرحلتين
-      updateHighlightCaptionDisplayWithPhases(newWordIndex, words, firstPhaseWords, secondPhaseWords, template);
+      // لا نعيد الرسم إلا إذا تغيرت الكلمة
+      if (newWordIndex !== currentHighlightCaptionWordIndex) {
+        currentHighlightCaptionWordIndex = newWordIndex;
+        updateHighlightCaptionDisplayWithPhases(newWordIndex, words, firstPhaseWords, secondPhaseWords, template);
+      }
     } else if (relativeTime < 0) {
       // قبل بداية الكابشن - إخفاء النص
-      updateHighlightCaptionDisplayWithPhases(-1, words, firstPhaseWords, secondPhaseWords, template);
+      if (currentHighlightCaptionWordIndex !== -1) {
+        currentHighlightCaptionWordIndex = -1;
+        updateHighlightCaptionDisplayWithPhases(-1, words, firstPhaseWords, secondPhaseWords, template);
+      }
     } else {
       // بعد نهاية الكابشن - إظهار جميع الكلمات
-      updateHighlightCaptionDisplayWithPhases(words.length - 1, words, firstPhaseWords, secondPhaseWords, template);
+      if (currentHighlightCaptionWordIndex !== words.length - 1) {
+        currentHighlightCaptionWordIndex = words.length - 1;
+        updateHighlightCaptionDisplayWithPhases(words.length - 1, words, firstPhaseWords, secondPhaseWords, template);
+      }
     }
   };
   
@@ -1291,7 +1343,7 @@ function updateHighlightCaptionDisplayWithPhases(wordIndex, allWords, firstPhase
   const textContainer = captionBox.querySelector('.highlight-caption-phase-container');
   if (!textContainer) return;
   
-  const maxWordsPerPhase = 4;
+  const maxWordsPerPhase = (template && template.highlightMode && template.highlightMode.maxWords) ? template.highlightMode.maxWords : 4;
   const hasSecondPhase = allWords.length > maxWordsPerPhase;
   
   // تحديد المرحلة الحالية
@@ -1321,8 +1373,19 @@ function updateHighlightCaptionDisplayWithPhases(wordIndex, allWords, firstPhase
           margin: 0 2px;
           padding: 0;
           transition: all 0.1s ease;
-          ${index === relativeWordIndex ? 'transform: scale(1.05);' : ''}
         `;
+        
+        // تطبيق الحركة على الكلمة الحالية فقط
+        if (index === relativeWordIndex) {
+          const animName = template.animation;
+          const animDef = templates && templates.animations ? templates.animations[animName] : null;
+          if (animName && animDef) {
+            wordSpan.style.animation = `${animName} ${animDef.duration || '0.7s'} ${animDef.timingFunction || 'ease'} both`;
+          } else {
+            // تأثير بديل بسيط
+            wordSpan.style.transform = 'scale(1.05)';
+          }
+        }
         textContainer.appendChild(wordSpan);
       }
     });
