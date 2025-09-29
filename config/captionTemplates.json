@@ -194,6 +194,35 @@
         ],
         "colorMode": "sequential"
       }
+    },
+    {
+      "id": "highlight-caption",
+      "name": "هايلايت كابشن",
+      "fontFamily": "Arial, sans-serif",
+      "fontSize": "22px",
+      "fontWeight": "700",
+      "textColor": "#000000",
+      "background": {
+        "enabled": true,
+        "color": "#C7FF57",
+        "paddingX": "16px",
+        "paddingY": "10px",
+        "borderRadius": "6px"
+      },
+      "animation": "zoomInThrow",
+      "align": "center",
+      "position": "bottom",
+      "textShadow": "none",
+      "border": "none",
+      "boxShadow": "none",
+      "highlightMode": {
+        "enabled": true,
+        "type": "box-highlight",
+        "maxWords": 4,
+        "syncWithAudio": true,
+        "showOnSpeak": true,
+        "speakDelay": 0
+      }
     }
   ],
   "animations": {
@@ -226,6 +255,11 @@
       "keyframes": "@keyframes yellowSyncHighlight { 0% { color: #ffffff; text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9); } 50% { color: #ffff00; text-shadow: 0 0 10px #ffff00, 2px 2px 6px rgba(0, 0, 0, 0.9); } 100% { color: #ffffff; text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9); } }",
       "duration": "0.4s",
       "timingFunction": "ease-in-out"
+    },
+    "zoomInThrow": {
+      "keyframes": "@keyframes zoomInThrow { 0% { transform: scale(0.1); opacity: 0; } 30% { transform: scale(1.3); opacity: 0.8; } 60% { transform: scale(0.9); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }",
+      "duration": "0.7s",
+      "timingFunction": "cubic-bezier(0.68, -0.55, 0.265, 1.55)"
     }
   }
 }

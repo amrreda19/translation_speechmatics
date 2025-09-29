@@ -46,7 +46,8 @@ function templateDescription(id){
     'capsule':'كبسولة أنيقة',
     'word-highlight':'هايلايت كلمة بكلمة متزامن',
     'yellow-sync-highlight':'تمييز أصفر متزامن بدون خلفية',
-    'sticker-captions':'ملصقات ملونة في شبكة 2×2'
+    'sticker-captions':'ملصقات ملونة في شبكة 2×2',
+    'highlight-caption':'هايلايت كابشن بارز بأسلوب VEED'
   };
   return map[id] || '';
 }
@@ -136,6 +137,11 @@ function applyTemplateStyles(tpl){
     // إيقاف أي تزامن ملصقات سابق إذا كان موجوداً
     if (isStickerSyncActive) {
       stopStickerSync();
+    }
+    
+    // إيقاف أي تزامن هايلايت كابشن سابق إذا كان موجوداً
+    if (isHighlightCaptionSyncActive) {
+      stopHighlightCaptionSync();
     }
     
     // تطبيق الأنماط الأساسية
@@ -253,6 +259,16 @@ function applyTemplateStyles(tpl){
         speakDelay: tpl.stickerMode?.speakDelay,
         syncWithAudio: tpl.stickerMode?.syncWithAudio,
         maxWords: tpl.stickerMode?.maxWords
+      });
+    } else if (tpl.id === 'highlight-caption' && tpl.highlightMode?.enabled) {
+      // تطبيق قالب هايلايت كابشن الجديد
+      applyHighlightCaptionTemplate(captionBox, tpl);
+      
+      // رسالة تشخيصية للقالب الجديد
+      console.log('تم تطبيق قالب هايلايت كابشن:', {
+        highlightMode: tpl.highlightMode?.type,
+        syncWithAudio: tpl.highlightMode?.syncWithAudio,
+        maxWords: tpl.highlightMode?.maxWords
       });
     } else {
       // تطبيق نظام المرحلتين على باقي القوالب
@@ -734,6 +750,83 @@ function applyWordHighlightTemplate(captionBox, template, vttData) {
   return true;
 }
 
+// تطبيق قالب هايلايت كابشن الجديد
+function applyHighlightCaptionTemplate(captionBox, template) {
+  if (!captionBox || !template || !template.highlightMode?.enabled) return;
+  
+  const text = captionBox.textContent || captionBox.innerText;
+  if (!text) return;
+  
+  // تقسيم النص إلى كلمات
+  const words = splitTextIntoWords(text);
+  if (words.length === 0) return;
+  
+  // مسح محتوى الكابشن
+  captionBox.innerHTML = '';
+  
+  // إنشاء حاوية للنص مع نظام المراحل المتعددة
+  const textContainer = document.createElement('div');
+  textContainer.className = 'highlight-caption-phase-container';
+  textContainer.style.cssText = `
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+  `;
+  
+  captionBox.appendChild(textContainer);
+  
+  // تطبيق الأنماط الخاصة بالقالب الجديد
+  captionBox.style.width = 'auto';
+  captionBox.style.maxWidth = '90%';
+  captionBox.style.minWidth = '200px';
+  captionBox.style.display = 'inline-block';
+  
+  // إضافة كلاس خاص للقالب الجديد
+  captionBox.classList.add('highlight-caption-mode');
+  
+  // بدء التزامن مع الصوت إذا كان متاحاً
+  const vttCues = window.vttCues || [];
+  if (vttCues && vttCues.length > 0) {
+    const video = document.querySelector('video');
+    if (video) {
+      const currentTime = video.currentTime;
+      const currentCue = vttCues.find(cue => 
+        currentTime >= cue.start && currentTime <= cue.end
+      );
+      
+      if (currentCue) {
+        const vttData = {
+          start: currentCue.start,
+          end: currentCue.end,
+          text: currentCue.text
+        };
+        startHighlightCaptionSync(captionBox, template, vttData, words);
+      }
+    }
+  } else {
+    // إذا لم تكن هناك بيانات VTT، نطبق العرض العادي
+    const currentText = captionBox.textContent || captionBox.innerText;
+    if (currentText && currentText.trim()) {
+      const vttData = {
+        start: 0,
+        end: 5, // مدة افتراضية 5 ثوان
+        text: currentText
+      };
+      startHighlightCaptionSync(captionBox, template, vttData, words);
+    }
+  }
+  
+  // إعادة إنشاء المقابض بعد تطبيق القالب
+  setTimeout(() => {
+    if (window.CaptionSystem && window.CaptionSystem.ensureResizeHandles) {
+      window.CaptionSystem.ensureResizeHandles();
+    }
+  }, 100);
+}
+
 // تهيئة فورية عند تحميل الملف
 if(document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initDOMElements);
@@ -747,6 +840,12 @@ let stickerSyncInterval = null;
 let currentStickerWordIndex = 0;
 let stickerWordElements = [];
 let isStickerSyncActive = false;
+
+// متغيرات قالب هايلايت كابشن الجديد
+let highlightCaptionSyncInterval = null;
+let currentHighlightCaptionWordIndex = 0;
+let highlightCaptionWordElements = [];
+let isHighlightCaptionSyncActive = false;
 
 // تطبيق قالب الملصقات الملونة
 function applyStickerTemplate(captionBox, template, vttData = null) {
@@ -956,6 +1055,35 @@ function stopStickerSync() {
   stickerWordElements = [];
 }
 
+// بدء التزامن مع الصوت لقالب هايلايت كابشن الجديد
+function startHighlightCaptionSync(captionBox, template, vttData, words) {
+  if (!template.highlightMode?.syncWithAudio || !vttData) return;
+  
+  stopHighlightCaptionSync(); // إيقاف أي تزامن سابق
+  
+  // الحصول على جميع عناصر الكلمات
+  highlightCaptionWordElements = captionBox.querySelectorAll('.highlight-caption-phase-container');
+  if (highlightCaptionWordElements.length === 0) return;
+  
+  isHighlightCaptionSyncActive = true;
+  currentHighlightCaptionWordIndex = -1;
+  
+  // بدء التزامن مع الفيديو
+  syncHighlightCaptionWithVideo(template, vttData, words);
+}
+
+// إيقاف التزامن مع الصوت لقالب هايلايت كابشن الجديد
+function stopHighlightCaptionSync() {
+  if (highlightCaptionSyncInterval) {
+    clearInterval(highlightCaptionSyncInterval);
+    highlightCaptionSyncInterval = null;
+  }
+  
+  isHighlightCaptionSyncActive = false;
+  currentHighlightCaptionWordIndex = 0;
+  highlightCaptionWordElements = [];
+}
+
 // التزامن مع الفيديو للملصقات
 function syncStickerWithVideo(template, vttData, words) {
   if (!isStickerSyncActive || !vttData) return;
@@ -1105,6 +1233,100 @@ function updateStickerDisplay(wordIndex) {
       wordEl.style.visibility = 'hidden';
     }
   });
+}
+
+// التزامن مع الفيديو لقالب هايلايت كابشن الجديد
+function syncHighlightCaptionWithVideo(template, vttData, words) {
+  if (!isHighlightCaptionSyncActive || !vttData) return;
+  
+  const video = document.querySelector('video');
+  if (!video) return;
+  
+  // حساب مدة كل كلمة بناءً على مدة الكابشن
+  const totalDuration = vttData.end - vttData.start;
+  const wordDuration = totalDuration / words.length;
+  
+  // تحديد المراحل
+  const maxWordsPerPhase = 4;
+  const hasSecondPhase = words.length > maxWordsPerPhase;
+  const firstPhaseWords = words.slice(0, maxWordsPerPhase);
+  const secondPhaseWords = words.slice(maxWordsPerPhase);
+  
+  // تحديث النص بناءً على وقت الفيديو
+  const updateHighlightCaption = () => {
+    if (!isHighlightCaptionSyncActive) return;
+    
+    const currentTime = video.currentTime;
+    const relativeTime = currentTime - vttData.start;
+    
+    if (relativeTime >= 0 && relativeTime <= totalDuration) {
+      let newWordIndex;
+      
+      // حساب فهرس الكلمة الحالية
+      newWordIndex = Math.min(Math.floor(relativeTime / wordDuration), words.length - 1);
+      
+      // تحديث عرض النص مع دعم المرحلتين
+      updateHighlightCaptionDisplayWithPhases(newWordIndex, words, firstPhaseWords, secondPhaseWords, template);
+    } else if (relativeTime < 0) {
+      // قبل بداية الكابشن - إخفاء النص
+      updateHighlightCaptionDisplayWithPhases(-1, words, firstPhaseWords, secondPhaseWords, template);
+    } else {
+      // بعد نهاية الكابشن - إظهار جميع الكلمات
+      updateHighlightCaptionDisplayWithPhases(words.length - 1, words, firstPhaseWords, secondPhaseWords, template);
+    }
+  };
+  
+  // تحديث كل 16ms للحصول على تزامن أكثر دقة (60fps)
+  highlightCaptionSyncInterval = setInterval(updateHighlightCaption, 16);
+  
+  // تحديث فوري
+  updateHighlightCaption();
+}
+
+// تحديث عرض قالب هايلايت كابشن مع دعم المرحلتين
+function updateHighlightCaptionDisplayWithPhases(wordIndex, allWords, firstPhaseWords, secondPhaseWords, template) {
+  const captionBox = window.captionBox || document.getElementById('captionBox');
+  if (!captionBox) return;
+  
+  const textContainer = captionBox.querySelector('.highlight-caption-phase-container');
+  if (!textContainer) return;
+  
+  const maxWordsPerPhase = 4;
+  const hasSecondPhase = allWords.length > maxWordsPerPhase;
+  
+  // تحديد المرحلة الحالية
+  let currentPhase = 1;
+  let wordsToShow = firstPhaseWords;
+  
+  if (hasSecondPhase && wordIndex >= maxWordsPerPhase) {
+    currentPhase = 2;
+    wordsToShow = secondPhaseWords;
+  }
+  
+  // مسح النص الحالي
+  textContainer.innerHTML = '';
+  
+  // إظهار الكلمات المناسبة للمرحلة الحالية
+  if (wordIndex >= 0) {
+    const wordsInCurrentPhase = currentPhase === 1 ? firstPhaseWords : secondPhaseWords;
+    const startIndex = currentPhase === 1 ? 0 : maxWordsPerPhase;
+    const relativeWordIndex = wordIndex - startIndex;
+    
+    wordsInCurrentPhase.forEach((word, index) => {
+      if (index <= relativeWordIndex) {
+        const wordSpan = document.createElement('span');
+        wordSpan.textContent = word;
+        wordSpan.style.cssText = `
+          display: inline-block;
+          margin: 0 2px;
+          padding: 0;
+          transition: all 0.1s ease;
+          ${index === relativeWordIndex ? 'transform: scale(1.05);' : ''}
+        `;
+        textContainer.appendChild(wordSpan);
+      }
+    });
+  }
 }
 
 // تطبيق نظام المرحلتين على باقي القوالب
@@ -1323,5 +1545,11 @@ window.TemplateManager = {
   startTwoPhaseSync,
   stopTwoPhaseSync,
   syncTwoPhaseWithVideo,
-  updateTwoPhaseDisplay
+  updateTwoPhaseDisplay,
+  // دوال قالب هايلايت كابشن الجديد
+  applyHighlightCaptionTemplate,
+  startHighlightCaptionSync,
+  stopHighlightCaptionSync,
+  syncHighlightCaptionWithVideo,
+  updateHighlightCaptionDisplayWithPhases
 };
