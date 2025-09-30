@@ -1,0 +1,44 @@
+{
+  "name": "translation-templates-system",
+  "version": "2.0.0",
+  "description": "نظام القوالب المنقسم - إدارة قوالب الترجمة المتقدمة",
+  "main": "templates-main.js",
+  "author": "Template System Developer",
+  "license": "MIT",
+  "keywords": [
+    "templates",
+    "captions",
+    "subtitles",
+    "arabic",
+    "translation",
+    "video",
+    "modular"
+  ],
+  "files": [
+    "templates-core.js",
+    "templates-ui.js",
+    "word-highlight.js",
+    "sticker-templates.js",
+    "highlight-caption.js",
+    "single-word-sync.js",
+    "typewriter.js",
+    "two-phase-system.js",
+    "templates-main.js",
+    "index.js",
+    "README.md"
+  ],
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"No tests specified\" && exit 0",
+    "build": "echo \"No build process needed\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "local"
+  },
+  "bugs": {
+    "url": "local"
+  },
+  "homepage": "local"
+}
